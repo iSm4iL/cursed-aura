@@ -1,0 +1,3530 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cursed &amp; Aura</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root{
+    --bg: #0c0e16;
+    --grid: #1b1f30;
+    --grid-strong: #262c44;
+    --panel: #12162280;
+    --panel-solid: #141826;
+    --edge: #2a2f45;
+    --text: #e9e7de;
+    --text-dim: #9a9cb3;
+    --cursed: #55d6c2;
+    --cursed-dim: #2f6e64;
+    --aura: #e2495c;
+    --gold: #d9b35c;
+    --gold-dim: #8a6a1f;
+    --boss: #8a4fd9;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;              /* иначе палец скроллит/зумит страницу вместо игры */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    font-family: 'Chakra Petch', system-ui, sans-serif;
+    color: var(--text);
+  }
+  #game{ position: fixed; inset: 0; }
+  #game canvas{ display: block; }
+
+  .xpstrip{
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: var(--grid-strong);
+    z-index: 5;
+    pointer-events: none;
+    border-bottom: 1px solid #05060b;
+  }
+  .xpfill{
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    transition: width 150ms ease;
+  }
+
+  .hud{
+    position: fixed;
+    inset: 0;
+    top: 10px;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .topbar{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 20px 6px;
+    background: linear-gradient(to bottom, #05060bcc, transparent);
+  }
+
+  .levelbadge{
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--panel-solid);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .timer{
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 0.03em;
+    min-width: 92px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bosswrap{
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 18px 10px;
+    background: linear-gradient(to bottom, #05060bcc, transparent);
+  }
+  .bosswrap.show{ display: flex; }
+  .bossname{
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--boss);
+  }
+  .hpwrap.boss{
+    width: 260px; height: 10px;
+    background: var(--grid-strong);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .hpfill.boss{
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #4a2a6e, var(--boss));
+    transition: width 150ms linear;
+  }
+
+  .hint{
+    position: fixed;
+    left: 18px;
+    bottom: 16px;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    background: var(--panel);
+    padding: 8px 12px;
+    border: 1px solid var(--edge);
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+    max-width: 320px;
+    pointer-events: none;
+  }
+  .hint b{ color: var(--text); }
+
+  .toast{
+    position: fixed;
+    top: 66px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    opacity: 0;
+    transition: opacity 200ms ease, transform 200ms ease;
+    background: var(--panel-solid);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .toast.show{ opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .buffs{
+    position: fixed;
+    right: 14px; bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+  .buff-chip{
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    backdrop-filter: blur(4px);
+  }
+
+  .overlay{
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #05060bb3;
+    pointer-events: all;
+    z-index: 10;
+  }
+  .overlay.show{ display: flex; }
+  .card{
+    background: var(--panel-solid);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    padding: 28px clamp(20px, 6vw, 42px);
+    text-align: center;
+    width: min(360px, 92vw);
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px #00000066;
+  }
+  .card h1{
+    margin: 0 0 6px;
+    font-size: 15px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--aura);
+    font-weight: 600;
+  }
+  .card .big{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 44px;
+    font-weight: 700;
+    margin: 10px 0 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .card .row{
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+    font-size: 14px;
+    color: var(--text-dim);
+    padding: 6px 0;
+    border-top: 1px solid var(--edge);
+  }
+  .card .row span:last-child{
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+  .card .retry{
+    margin-top: 22px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .card .retry b{ color: var(--gold); }
+
+  .levelcard{ width: min(420px, 92vw); }
+  .levelcard h1{ color: var(--gold); }
+  .pausecard{ width: min(420px, 92vw); }
+  .pausecard h1{ color: var(--cursed); }
+  .section-label{
+    margin: 14px 0 6px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+  }
+  .empty-note{
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 4px 2px;
+    font-style: italic;
+  }
+  .upgrades{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 18px;
+    max-height: 46vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .upgrade-btn{
+    width: 100%;
+    background: #0e1120;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'Chakra Petch', sans-serif;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .upgrade-btn:hover{
+    border-color: var(--gold);
+    background: #171c30;
+  }
+  .upgrade-btn .num{
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--gold);
+    font-size: 12px;
+    width: 14px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .upgrade-icon{
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    color: #05060b;
+  }
+  .upgrade-text{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    text-align: left;
+  }
+  .upgrade-btn .name{
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .upgrade-btn .desc{
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.35;
+  }
+  .upgrade-btn{ position: relative; }
+  /* Кнопка подробностей живёт в углу карточки и не должна выбирать саму способность. */
+  .info-btn{
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #0b0e1a;
+    border: 1px solid var(--edge);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .info-btn:hover{ border-color: var(--gold); color: var(--gold); }
+  .detailcard{ width: min(460px, 94vw); text-align: left; }
+  .detail-desc{
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.45;
+    margin: 10px 0 14px;
+  }
+  .detail-row{
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 5px 0;
+    border-top: 1px solid var(--edge);
+  }
+  .detail-row span:last-child{
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+  .detail-evo{
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 5px 0 5px 10px;
+    border-left: 2px solid var(--edge);
+    margin: 6px 0;
+  }
+  .detail-evo b{ color: var(--text); font-weight: 700; }
+
+  /* Мобильное управление. Включается само по (pointer: coarse) — телефон/планшет.
+     На десктопе весь блок остаётся display:none и палец/мышь не перехватывает. */
+  .touch-only{ display: none !important; }
+  @media (pointer: coarse){
+    .touch-only{ display: revert !important; }
+    .kbd-only{ display: none !important; }
+  }
+
+  #stickZone{
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    touch-action: none;
+  }
+  #stick{
+    position: fixed;
+    width: 132px; height: 132px;
+    margin: -66px 0 0 -66px;
+    border-radius: 50%;
+    border: 1px solid var(--edge);
+    background: #12162266;
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    transition: opacity 120ms ease;
+    pointer-events: none;
+  }
+  #stick.show{ opacity: 1; }
+  #stickKnob{
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 54px; height: 54px;
+    margin: -27px 0 0 -27px;
+    border-radius: 50%;
+    background: var(--panel-solid);
+    border: 1px solid var(--cursed);
+    box-shadow: 0 0 14px #55d6c255;
+  }
+  #btnFull{ right: calc(68px + env(safe-area-inset-right)); }
+  .tbtn{
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top));
+    right: calc(14px + env(safe-area-inset-right));
+    z-index: 7;
+    width: 46px; height: 46px;
+    border-radius: 10px;
+    background: var(--panel-solid);
+    border: 1px solid var(--edge);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+</style>
+
+<div id="game"></div>
+
+<div id="stickZone" class="touch-only"><div id="stick"><div id="stickKnob"></div></div></div>
+<button class="tbtn touch-only" id="btnPause" aria-label="Пауза">❙❙</button>
+<button class="tbtn touch-only" id="btnFull" aria-label="На весь экран" hidden>⛶</button>
+
+<div class="xpstrip"><div class="xpfill" id="xpFill"></div></div>
+
+<div class="hud">
+  <div class="topbar">
+    <div class="levelbadge" id="levelBadge">1</div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+  <div class="bosswrap" id="bossWrap">
+    <div class="bossname">Арена стражей · осталось <span id="bossCount">0</span></div>
+    <div class="hpwrap boss"><div class="hpfill boss" id="bossHpFill"></div></div>
+  </div>
+</div>
+
+<div class="hint" id="hint"><b>WASD</b> / стрелки — движение, <b>ESC</b> — пауза. Собирай кристаллы опыта, чтобы усиливаться.</div>
+<div class="toast" id="toast"></div>
+<div class="buffs" id="buffs"></div>
+
+<div class="overlay" id="deathOverlay">
+  <div class="card">
+    <h1>Ты пал</h1>
+    <div class="big mono" id="finalTime">00:00</div>
+    <div class="row"><span>Изгнано тварей</span><span id="finalKills">0</span></div>
+    <div class="row"><span>Достигнут уровень</span><span id="finalLevel">1</span></div>
+    <div class="retry"><span class="kbd-only">Нажми <b>R</b>, чтобы пробудиться снова</span><span class="touch-only">Коснись экрана, чтобы пробудиться снова</span></div>
+  </div>
+</div>
+
+<div class="overlay" id="levelUpOverlay">
+  <div class="card levelcard">
+    <h1>Пробуждение силы</h1>
+    <div class="upgrades" id="upgradeChoices"></div>
+  </div>
+</div>
+
+<div class="overlay" id="detailOverlay">
+  <div class="card detailcard">
+    <h1 id="dTitle">Заклинание</h1>
+    <div class="detail-desc" id="dDesc"></div>
+    <div id="dStats"></div>
+    <div class="section-label" id="dEvoLabel" hidden>Эволюции</div>
+    <div id="dEvos"></div>
+    <div class="retry">Коснись экрана, чтобы вернуться</div>
+  </div>
+</div>
+
+<div class="overlay" id="pauseOverlay">
+  <div class="card pausecard">
+    <h1>Пауза</h1>
+    <div class="row"><span>Уровень</span><span id="pLevel">1</span></div>
+    <div class="row"><span>Время</span><span id="pTime">00:00</span></div>
+    <div class="row"><span>Изгнано тварей</span><span id="pKills">0</span></div>
+    <div class="row"><span>HP</span><span id="pHp">100/100</span></div>
+    <div class="row"><span>Скорость</span><span id="pSpeed">220</span></div>
+    <div class="row"><span>Волна</span><span id="pWave">1</span></div>
+    <div class="section-label">Навыки</div>
+    <div class="upgrades" id="pSkills"></div>
+    <div class="section-label">Предметы</div>
+    <div class="upgrades" id="pLoot"></div>
+    <div class="retry"><span class="kbd-only">Нажми <b>ESC</b>, чтобы продолжить</span><span class="touch-only">Коснись экрана, чтобы продолжить</span></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  const TOUCH = window.matchMedia('(pointer: coarse)').matches;
+  const HINT_DEFAULT = TOUCH
+    ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
+    : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
+
+  const PLAYER_SPEED = 198;
+  const BOLT_SPEED = 560;
+  const ENEMY_STOP_DIST = 18;
+
+  const ENEMY_SPEED = 88;
+  const ENEMY_BASE_HP = 200;
+  const ENEMY_CONTACT_DAMAGE = 10;
+  const ENEMY_CONTACT_COOLDOWN = 700;
+  const ENEMY_SPAWN_RADIUS = 620;
+  const ENEMY_LEASH_RADIUS = 1300;
+
+  // Пять категорий врагов. Всё задано множителями от базового врага, чтобы правился
+  // один ENEMY_BASE_HP, а не двадцать чисел. heavy — не отбрасывается и не стягивается.
+  const ENEMY_TIERS = {
+    normal:   { tex: 'tex-enemy',    radius: 10, hp: 1,  dmg: 1,   speed: 1,    orb: 'small' },
+    enhanced: { tex: 'tex-enhanced', radius: 13, hp: 3,  dmg: 1.3, speed: 1,    orb: 'medium' },
+    elite:    { tex: 'tex-elite',    radius: 16, hp: 5,  dmg: 1.6, speed: 0.95, orb: 'large' },
+    miniboss: { tex: 'tex-miniboss', radius: 22, hp: 10, dmg: 2,   speed: 0.8,  xpPct: 0.25, xpMin: 45, heavy: true },
+    boss:     { tex: 'tex-boss',     radius: 28, hp: 4,  dmg: 2.5, speed: 0.72, xpPct: 0.5,  xpMin: 90,  heavy: true, slamMs: 3600, slamRadius: 150, slamDmg: 18 },
+    // Древний страж выходит на третьей арене: крупнее, живучее и бьёт по площади чаще
+    // и дальше — этот бой должен ощущаться рубежом, а не третьим одинаковым боссом.
+    elder:    { tex: 'tex-elder',    radius: 40, hp: 9,  dmg: 3.2, speed: 0.62, xpPct: 1.0, xpMin: 260, heavy: true, slamMs: 2600, slamRadius: 230, slamDmg: 28 }
+  };
+  // Шанс уронить кристалл жизни. Редкий у рядовых, гарантированный у мини-босса —
+  // чтобы после ошибки можно было отыграться, но не стоять в толпе бесконечно.
+  const HP_ORB_CHANCE = { normal: 0.030, enhanced: 0.10, elite: 0.20, miniboss: 1, boss: 0.5 };
+  const HP_ORB_HEAL_PCT = 0.12;
+
+  // Размер кристалла сразу показывает, с кого он упал.
+  // Опыт за убийство растёт вместе с силой врагов: иначе к третьей минуте убийство
+  // стоит втрое дороже, а даёт столько же, и прокачка встаёт намертво.
+  const XP_SCALE_CAP = 3.5;
+  function xpScale(){ return Math.max(1, Math.min(XP_SCALE_CAP, enemyHpMult())); }
+
+  const XP_ORBS = {
+    small:  { value: 8,  scale: 1,    tint: 0xd9b35c },
+    medium: { value: 24, scale: 1.35, tint: 0x9fe8ff },
+    large:  { value: 45, scale: 1.7,  tint: 0xd67ee0 }
+  };
+
+  // Отдельного расписания у элиты и мини-боссов больше нет: они появляются только
+  // в событиях (Разлом) и на арене босса. Усиленные подмешиваются в обычную волну
+  // долей ENHANCED_SHARE_CURVE.
+
+
+  // Сложность задаётся КРИВЫМИ по времени забега, а не линейной формулой: линейная
+  // не позволяла одновременно смягчить старт и оставить тяжёлый поздний забег — любая
+  // правка тянула за собой всю шкалу. Точки — [мс забега, множитель], между ними линейно.
+  // Первые две минуты сознательно мягкие: игрок должен успевать убивать, собирать опыт
+  // и возвращаться за брошенными кристаллами, а не бежать без остановки.
+  const ENEMY_HP_CURVE    = [[0, 0.42], [60000, 0.58], [120000, 0.82], [180000, 1.15], [360000, 2.3], [600000, 4.1], [900000, 6.4]];
+  const ENEMY_DMG_CURVE   = [[0, 0.60], [60000, 0.72], [120000, 0.88], [180000, 1.05], [360000, 1.7], [600000, 2.5], [900000, 3.4]];
+  const ENEMY_SPEED_CURVE = [[0, 0.44], [60000, 0.50], [120000, 0.60], [240000, 0.75], [420000, 0.92], [720000, 1.15]];
+  const ENEMY_CAP_CURVE   = [[0, 40], [60000, 85], [120000, 145], [180000, 210], [300000, 320], [480000, 430], [720000, 520]];
+  const SPAWN_MS_CURVE    = [[0, 1200], [60000, 760], [120000, 470], [180000, 320], [300000, 180], [480000, 120], [720000, 95]];
+  // Доля усиленных в обычной волне. Рядовые обязаны оставаться основой толпы даже
+  // в поздней игре, поэтому доля растёт медленно и упирается в потолок.
+  const ENHANCED_SHARE_CURVE = [[0, 0], [30000, 0.03], [90000, 0.06], [180000, 0.10], [300000, 0.16], [600000, 0.24], [900000, 0.28]];
+
+  const MAX_ENEMIES_HARD = 520;                  // потолок ради производительности
+  const ENEMY_LEVEL_SCALING = 0.02;              // +2% HP за уровень игрока
+  const WAVE_HP_STEP = 0.22;                     // ступень после каждой зачищенной арены
+  const WAVE_DMG_STEP = 0.14;
+  const WAVE_SPEED_STEP = 0.04;
+  const WAVE_DENSITY_STEP = 0.16;
+  const ENEMY_SPEED_MAX_MULT = 1.55;             // потолок: враг не должен догонять игрока
+
+  function sampleCurve(points, t){
+    if (t <= points[0][0]) return points[0][1];
+    for (let i = 1; i < points.length; i++){
+      if (t <= points[i][0]){
+        const [t0, v0] = points[i - 1], [t1, v1] = points[i];
+        return Phaser.Math.Linear(v0, v1, (t - t0) / (t1 - t0));
+      }
+    }
+    return points[points.length - 1][1];
+  }
+
+  function waveMult(step){ return 1 + waveLevel * step; }
+  function enemyHpMult(){
+    return sampleCurve(ENEMY_HP_CURVE, runMs) * (1 + level * ENEMY_LEVEL_SCALING) * waveMult(WAVE_HP_STEP);
+  }
+  function enemyDmgMult(){
+    return sampleCurve(ENEMY_DMG_CURVE, runMs) * waveMult(WAVE_DMG_STEP);
+  }
+  function enemySpeedMult(){
+    return Math.min(ENEMY_SPEED_MAX_MULT, sampleCurve(ENEMY_SPEED_CURVE, runMs) * waveMult(WAVE_SPEED_STEP));
+  }
+  function enemyCap(){
+    return Math.round(Math.min(MAX_ENEMIES_HARD, sampleCurve(ENEMY_CAP_CURVE, runMs) * waveMult(WAVE_DENSITY_STEP)));
+  }
+  function spawnIntervalMs(){
+    return sampleCurve(SPAWN_MS_CURVE, runMs) / waveMult(WAVE_DENSITY_STEP);
+  }
+
+  const XP_MAGNET_SPEED = 260;
+
+  const RUNES = {
+    magnet: { name: 'Руна притяжения', color: 0x55d6c2, instant: true },
+    damage: { name: 'Руна ярости', color: 0xe2495c, duration: 10000 },
+    invuln: { name: 'Руна неуязвимости', color: 0xd9b35c, duration: 8000 },
+    timestop: { name: 'Руна времени', color: 0x8a4fd9, duration: 6000 },
+    bounty: { name: 'Руна изобилия', color: 0xfff2c9, instant: true }
+  };
+  const RUNE_IDS = Object.keys(RUNES);
+  const RUNE_SPAWN_MIN_MS = 20000;
+  const RUNE_SPAWN_MAX_MS = 40000;
+  const RUNE_LIFETIME_MS = 20000;
+  const BOUNTY_XP_AMOUNT = 20;
+
+  // Событие «Разлом»: единственный способ получить предмет, кроме босса. Появляется
+  // далеко от игрока — смысл события в том, чтобы заставить двигаться по карте.
+  const RIFT_FIRST_MS = 70000;
+  const RIFT_INTERVAL_MS = 120000;
+  const RIFT_DIST_MIN = 850;
+  const RIFT_DIST_MAX = 1250;
+  const RIFT_ELITES_MIN = 10;
+  const RIFT_ELITES_MAX = 12;
+
+  // Арена босса (§32-34): раз в 3 минуты ЧИСТОГО времени забега — на время боя таймер
+  // забега стоит, иначе бой длиной в полторы минуты сразу подтягивал следующего босса.
+  const BOSS_INTERVAL_MS = 180000;
+  const BOSS_RADIUS = 680;
+  const BOSS_CONTACT_COOLDOWN = 700;
+  const ARENA_BOSS_MIN = 2;
+  const ARENA_BOSS_MAX = 5;
+  // Состав подкрепления растёт с волнами. Первая арена приходит на 3-й минуте, когда
+  // у игрока 3-4 способности и ~10 уровень — полный состав (10 усиленных + 20 рядовых)
+  // поверх уже накопившейся на карте толпы там гарантированно убивает. К волне 2-3
+  // состав выходит на заявленные числа и дальше растёт.
+  const ARENA_ENHANCED = 4;
+  const ARENA_ENHANCED_STEP = 3;
+  const ARENA_NORMAL = 12;
+  const ARENA_NORMAL_STEP = 6;
+  const ARENA_REINFORCE_ARC = Math.PI * 0.7;
+
+  const TILE = 128;
+
+  // Каждое базовое заклинание — ветка 1-5. Достижение 5 уровня СРАЗУ открывает отдельное
+  // окно выбора эволюции (эволюции никогда не выпадают случайно в обычном левел-апе).
+  // Все числа тут — стартовые цели баланса, меняются правкой этой таблицы, без правки логики.
+  // falloff — доля от dmg на N-м прыжке цепи (индекс 0 = первая цель).
+  const CHAIN_FALLOFF = [1, 0.75, 0.55, 0.40, 0.30, 0.22, 0.18];
+  const NECRO_MAX_ALLIES = 25;
+
+  const WEAPONS = {
+    wave: {
+      name: 'Волна', color: 0x4fb8e0, type: 'wave',
+      levels: [null,
+        { dmg: 88, speed: 440, cooldown: 3400, summary: 'Широкая волна воды пролетает через весь экран, пронзая всех на пути' },
+        { dmg: 112, speed: 455, cooldown: 3200 },
+        { dmg: 138, speed: 470, cooldown: 3000 },
+        { dmg: 165, speed: 485, cooldown: 2800 },
+        { dmg: 195, speed: 500, cooldown: 2600 }
+      ],
+      evolutions: [
+        { name: 'Цунами', desc: 'Мощный удар по всем вокруг с сильным отбрасыванием', type: 'area', level6: { dmg: 210, radius: 300, cooldown: 4000, knockback: 110 } },
+        { name: 'Шторм', desc: '+8% уклонения навсегда, постоянный лёгкий урон и замедление вокруг тебя', type: 'area', onPick: () => { stats.evasion += 0.08; }, level6: { dmg: 12, radius: 150, cooldown: 600, slowMult: 0.85, slowMs: 500 } },
+        { name: 'Гейзер', desc: 'Рядом с тобой вспухает земля и бьёт гейзер: тяжёлый удар по площади и сильное замедление', type: 'geyser', level6: { dmg: 200, radius: 190, cooldown: 2800, offset: [110, 260], windup: 420, slowMult: 0.45, slowMs: 2000 } }
+      ]
+    },
+    charm: {
+      name: 'Кровь', color: 0xb02040, type: 'charm',
+      levels: [null,
+        { count: 1, duration: 5000, dmg: 16, cooldown: 10000, summary: 'Подчиняет случайного врага рядом — он дерётся на твоей стороне' },
+        { count: 3, duration: 5500, dmg: 18, cooldown: 9000 },
+        { count: 5, duration: 6000, dmg: 20, cooldown: 8000 },
+        { count: 7, duration: 7000, dmg: 24, cooldown: 7000 },
+        { count: 9, duration: 8000, dmg: 28, cooldown: 6500 }
+      ],
+      evolutions: [
+        { name: 'Некромант', desc: 'Убитые твоими подчинёнными враги восстают и тоже дерутся за тебя', level6: { count: 9, duration: 8000, dmg: 28, cooldown: 6500, necromancer: true } },
+        { name: 'Договор', desc: 'Позволяет подчинять и элитных врагов', level6: { count: 9, duration: 8000, dmg: 40, cooldown: 6500, allowElite: true, boostedHp: true } },
+        { name: 'Двойники', desc: 'Кровь убитых собирается в призрачных двойников: они держатся рядом и повторяют твои заклинания вполсилы', level6: { count: 9, duration: 8000, dmg: 28, cooldown: 6500, clones: true, cloneCost: 14, cloneMax: 3, cloneLife: 14000, cloneAttackMs: 850, clonePart: 0.25, clonePower: 0.2, cloneOrbit: 84, cloneSpin: 0.7 } }
+      ]
+    },
+    frost: {
+      name: 'Лёд', color: 0x9fe8ff, type: 'multiburst',
+      levels: [null,
+        { count: 1, dmg: 42, radius: 74, freeze: 500, cooldown: 1100, offset: [40, 150], summary: 'Ледяные взрывы вспыхивают вокруг тебя — бьют и замораживают' },
+        { count: 2, dmg: 54, radius: 80, freeze: 600, cooldown: 1050, offset: [40, 160] },
+        { count: 3, dmg: 68, radius: 86, freeze: 700, cooldown: 1000, offset: [40, 170] },
+        { count: 4, dmg: 84, radius: 92, freeze: 800, cooldown: 920, offset: [40, 180] },
+        { count: 5, dmg: 100, radius: 98, freeze: 900, cooldown: 850, offset: [40, 190] }
+      ],
+      evolutions: [
+        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек во все стороны', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 3, cooldown: 1900, scale: 2.9, charge: 600, projTex: 'tex-icicle' } },
+        { name: 'Чёрный лёд', desc: 'Постоянная большая область вокруг тебя, сильно замедляет врагов', type: 'slowarea', level6: { radius: 330, slowMult: 0.5, duration: 2000, cooldown: 1500 } },
+        { name: 'Иний', desc: 'Иней оседает на самом крупном враге: все в зоне получают на 20% больше урона от любых источников', type: 'markzone', level6: { radius: 170, amp: 1.2, duration: 5000, cooldown: 4000 } }
+      ]
+    },
+    fire: {
+      name: 'Огонь', color: 0xff7a3d, type: 'trailshot',
+      levels: [null,
+        { dmg: 42, pierce: 0, cooldown: 1100, trailDmg: 10, trailTicks: 5, trailGap: 26, tickMs: 380, summary: 'Огненная стрела оставляет за собой горящий след' },
+        { dmg: 54, pierce: 0, cooldown: 1050, trailDmg: 12, trailTicks: 6, trailGap: 26, tickMs: 360 },
+        { dmg: 68, pierce: 1, cooldown: 1000, trailDmg: 15, trailTicks: 6, trailGap: 24, tickMs: 340 },
+        { dmg: 85, pierce: 1, cooldown: 920, trailDmg: 18, trailTicks: 7, trailGap: 24, tickMs: 320 },
+        { dmg: 102, pierce: 2, cooldown: 850, trailDmg: 22, trailTicks: 8, trailGap: 22, tickMs: 300 }
+      ],
+      evolutions: [
+        { name: 'Залп стрел', desc: '10 огненных стрел разлетаются во все стороны, каждая оставляет след', type: 'radialvolley', level6: { count: 10, dmg: 40, pierce: 1, cooldown: 2600, stagger: 175, trailDmg: 10, trailTicks: 3, trailGap: 26, tickMs: 380 } },
+        { name: 'Драконьи стрелы', desc: 'Две огромные стрелы уходят вперёд и назад, прошивая насквозь всех на пути', type: 'dragon', level6: { dmg: 280, speed: 620, cooldown: 3600, tex: 'tex-dragon', halfThickness: 190, halfLength: 30, fromPlayer: true } },
+        { name: 'Солнце', desc: 'Солнце висит над тобой и волнами выжигает всё вокруг', type: 'aura', level6: { dmg: 42, radius: 180, tickMs: 460, duration: 3600, cooldown: 3600 } }
+      ]
+    },
+    lightning: {
+      name: 'Молния', color: 0xf5e14a, type: 'chain',
+      levels: [null,
+        { dmg: 42, cooldown: 1000, chainCount: 3, chainRadius: 150, falloff: CHAIN_FALLOFF, summary: 'Молния бьёт ближайшего врага и перескакивает по цепи на соседних' },
+        { dmg: 55, cooldown: 950, chainCount: 4, chainRadius: 160, falloff: CHAIN_FALLOFF },
+        { dmg: 70, cooldown: 880, chainCount: 5, chainRadius: 170, falloff: CHAIN_FALLOFF },
+        { dmg: 88, cooldown: 820, chainCount: 6, chainRadius: 185, falloff: CHAIN_FALLOFF },
+        { dmg: 108, cooldown: 750, chainCount: 7, chainRadius: 200, falloff: CHAIN_FALLOFF }
+      ],
+      evolutions: [
+        { name: 'Разряд смерти', desc: 'Каждый убитый враг лопается разрядом: цепь бьёт по тем, кто стоял рядом', type: 'deathspark', level6: { dmg: 55, chainCount: 3, chainRadius: 145, falloff: [1, 0.6, 0.4], cooldown: 999999 } },
+        { name: 'Гнев небес', desc: '10 молний обрушиваются разом вокруг тебя, каждая с короткой цепью', type: 'multichain', level6: { dmg: 150, cooldown: 4200, chainCount: 3, chainRadius: 120, strikes: 10, falloff: [1, 0.55, 0.35] } },
+        { name: 'Цепная реакция', desc: 'Каждое другое твоё заклинание дополнительно бьёт цепной молнией', type: 'reactionproc', level6: { dmg: 100, chainCount: 10, chainRadius: 150, falloff: [1, 0.8, 0.65, 0.5, 0.4, 0.3, 0.24, 0.19, 0.15, 0.12] } }
+      ]
+    },
+    blast: {
+      name: 'Взрыв', color: 0xffa23d, type: 'delayedblast',
+      levels: [null,
+        { dmg: 60, count: 1, cooldown: 850, radius: 84, speed: 580, summary: 'Летит молча в ближайшего врага и взрывается в цели' },
+        { dmg: 75, count: 1, cooldown: 820, radius: 90, speed: 580 },
+        { dmg: 95, count: 2, cooldown: 780, radius: 98, speed: 600 },
+        { dmg: 118, count: 2, cooldown: 740, radius: 108, speed: 600 },
+        { dmg: 140, count: 2, cooldown: 700, radius: 118, speed: 620 }
+      ],
+      evolutions: [
+        { name: 'Термоядерный взрыв', desc: 'Вспышка стирает с карты всех обычных, усиленных и элитных; боссам сносит треть здоровья', type: 'nukeglobal', level6: { pctHeavy: 0.35, cooldown: 32000 } },
+        { name: 'Имплозия', desc: 'Слабый урон, но мощно стягивает врагов в одну точку', type: 'pull', level6: { dmg: 40, radius: 240, pull: 200, speed: 560, cooldown: 3800 } },
+        { name: 'Иерихон', desc: '10 ракет уходят по случайным целям вокруг тебя и рвутся при попадании', type: 'volleyburst', level6: { dmg: 155, radius: 125, range: 280, speed: 600, cooldown: 3400, count: 10, projTex: 'tex-rocket' } }
+      ]
+    },
+    earth: {
+      name: 'Землетрясение', color: 0xd9b35c, type: 'area',
+      levels: [null,
+        { dmg: 52, radius: 138, cooldown: 1400, offset: [80, 200], summary: 'Земля вздрагивает рядом с тобой и бьёт всех в области удара' },
+        { dmg: 68, radius: 163, cooldown: 1340, offset: [80, 210] },
+        { dmg: 88, radius: 188, cooldown: 1280, offset: [80, 220] },
+        { dmg: 112, radius: 213, cooldown: 1220, offset: [80, 230] },
+        { dmg: 140, radius: 238, cooldown: 1150, offset: [80, 240] }
+      ],
+      evolutions: [
+        { name: 'Валуны', desc: 'Валуны падают вокруг тебя, оглушая и калеча всё под собой', type: 'multiburst', level6: { count: 5, dmg: 70, radius: 95, freeze: 1300, cooldown: 2200, offset: [50, 190] } },
+        { name: 'Разлом', desc: 'Земля лопается длинной трещиной до края экрана, стягивает к ней врагов и рвёт их по доле здоровья', type: 'rift', level6: { pctMaxHp: 0.5, pctHeavy: 0.12, halfWidth: 62, windup: 480, pull: 90, pullBand: 4, cooldown: 12000 } },
+        { name: 'Дрожь', desc: 'Каждый твой шаг отдаётся ударной волной — чем быстрее бежишь, тем чаще; чем больше задело, тем больнее', type: 'tremor', level6: { dmg: 18, perEnemy: 7, radius: 260, stepDist: 210, cooldown: 999999 } }
+      ]
+    },
+    metal: {
+      name: 'Металлические шипы', color: 0xb9c2d0, type: 'zone',
+      levels: [null,
+        { dmg: 26, radius: 132, tickMs: 520, duration: 3000, cooldown: 2500, offset: [70, 180], summary: 'Неподалёку от тебя из земли лезут шипы и рвут всех, кто попал в них' },
+        { dmg: 34, radius: 152, tickMs: 510, duration: 3200, cooldown: 2400, offset: [70, 190] },
+        { dmg: 44, radius: 172, tickMs: 500, duration: 3400, cooldown: 2300, offset: [70, 200] },
+        { dmg: 56, radius: 192, tickMs: 490, duration: 3600, cooldown: 2200, offset: [70, 210] },
+        { dmg: 70, radius: 212, tickMs: 480, duration: 3800, cooldown: 2100, offset: [70, 220] }
+      ],
+      evolutions: [
+        { name: 'Монументы', desc: '6 столбов вырастают из земли, пять секунд бьют долей здоровья и держат врагов замедленными', type: 'monuments', level6: { count: 6, pctMaxHp: 0.05, dmg: 20, radius: 105, orbit: 185, duration: 5000, tickMs: 700, slowMult: 0.5, slowMs: 900, cooldown: 7000 } },
+        { name: 'Стена', desc: 'Две тяжёлые стены встают перед тобой: враги не проходят сквозь них, пока не разобьют', type: 'wall', level6: { hp: 700, duration: 9000, cooldown: 8000, length: 200, dist: 100, spread: 0.85, block: 26 } },
+        { name: 'Пила', desc: 'Две пилы расходятся в стороны и обходят тебя по кругу, вгрызаясь в каждого на пути', type: 'saw', level6: { dmg: 60, pctMaxHp: 0.08, orbit: 150, radius: 42, spin: 3.4, cooldown: 2200 } }
+      ]
+    },
+    lava: {
+      name: 'Лава', color: 0xff5a1f, type: 'zone',
+      levels: [null,
+        { pctMaxHp: 0.030, dmg: 12, radius: 120, tickMs: 620, duration: 3000, count: 1, cooldown: 3600, offset: [90, 230], summary: 'Лужи лавы разливаются рядом с тобой и выжигают долю здоровья у всех, кто в них стоит' },
+        { pctMaxHp: 0.040, dmg: 16, radius: 128, tickMs: 620, duration: 4000, count: 1, cooldown: 3600, offset: [90, 240] },
+        { pctMaxHp: 0.050, dmg: 21, radius: 136, tickMs: 620, duration: 5000, count: 2, cooldown: 3600, offset: [90, 250] },
+        { pctMaxHp: 0.062, dmg: 26, radius: 146, tickMs: 620, duration: 6000, count: 2, cooldown: 3600, offset: [90, 260] },
+        { pctMaxHp: 0.075, dmg: 32, radius: 156, tickMs: 620, duration: 7000, count: 3, cooldown: 3600, offset: [90, 270] }
+      ],
+      evolutions: [
+        { name: 'Вулкан', desc: 'Вместо долгой лужи — короткие извержения, но бьют втрое больнее', type: 'zone', level6: { pctMaxHp: 0.20, dmg: 45, radius: 135, tickMs: 380, duration: 1500, count: 4, cooldown: 4000, offset: [90, 260] } },
+        { name: 'Ядро', desc: 'Раскалённое ядро тяжело вращается вокруг тебя и сминает всё, до чего дотянется', type: 'core', onPick: () => spawnLavaCore(), level6: { dmg: 120, pctMaxHp: 0.04, orbit: 165, radius: 54, spin: 2.8, rehit: 600, cooldown: 999999 } },
+        { name: 'Метеоритный дождь', desc: 'Небо роняет вокруг тебя десяток метеоров — каждый бьёт по площади', type: 'meteors', level6: { count: 16, dmg: 38, pctMaxHp: 0.03, radius: 76, offset: [60, 340], windup: 480, cooldown: 5000 } }
+      ]
+    },
+    airbullet: {
+      name: 'Воздушная пуля', color: 0xbfe9ff, type: 'volley',
+      levels: [null,
+        { count: 1, dmg: 36, pierce: 0, cooldown: 650, summary: 'Быстрая воздушная пуля летит в ближайшего врага' },
+        { count: 2, dmg: 46, pierce: 0, cooldown: 620 },
+        { count: 3, dmg: 58, pierce: 1, cooldown: 590 },
+        { count: 4, dmg: 72, pierce: 1, cooldown: 560 },
+        { count: 5, dmg: 90, pierce: 2, cooldown: 520 }
+      ],
+      evolutions: [
+        { name: 'Пушка', desc: 'Плотный поток воздуха идёт вперёд, расталкивая всех с дороги', type: 'forwardvolley', level6: { count: 1, dmg: 90, pierce: 8, cooldown: 1600, knockback: 150, scale: 1.5, projTex: 'tex-gust', alpha: 0.55 } },
+        { name: 'Рассекающая', desc: 'Вместо пуль — режущие волны вперёд: узкие у тебя и широкие вдали', type: 'slash', level6: { count: 5, dmg: 120, speed: 560, life: 900, w0: 30, w1: 150, gap: 140, cooldown: 1700 } },
+        { name: 'Святая пуля', desc: 'Тяжёлые очищающие пули: снимают с врагов усиления и бьют сильнее обычных', level6: { count: 5, dmg: 125, pierce: 2, cooldown: 700, dispel: true } }
+      ]
+    },
+    barrier: {
+      name: 'Барьер', color: 0x8fd6ff, type: 'barrier',
+      levels: [null,
+        { absorb: 1, cooldown: 10000, summary: 'Щит поглощает следующий удар по тебе' },
+        { absorb: 2, cooldown: 9200 },
+        { absorb: 3, cooldown: 8400 },
+        { absorb: 4, cooldown: 7500 },
+        { absorb: 5, cooldown: 6500 }
+      ],
+      evolutions: [
+        { name: 'Отражающий барьер', desc: 'Каждый поглощённый удар с силой отбрасывает нападающего', level6: { absorb: 5, cooldown: 8000, repel: 200 } },
+        { name: 'Неуязвимость', desc: '5 секунд полной неуязвимости, но твой урон на это время ниже', type: 'invuln', level6: { cooldown: 20000, duration: 5000, dmgPenalty: 0.2 } },
+        { name: 'Лёгкость', desc: 'Быстрее, злее и с меньшей перезарядкой — но здоровья меньше', type: 'passive', onPick: () => { stats.moveSpeed = Math.round(stats.moveSpeed * 1.2); globalDmgMult += 0.1; globalCooldownMult = Math.max(0.5, globalCooldownMult - 0.1); stats.maxHp = Math.round(stats.maxHp * 0.9); playerHp = Math.min(playerHp, stats.maxHp); }, level6: { cooldown: 999999 } }
+      ]
+    }
+  };
+  const WEAPON_IDS = Object.keys(WEAPONS);
+  const ACTIVE_WEAPON_IDS = WEAPON_IDS.filter((id) => !WEAPONS[id].hidden);
+
+  // Левел-ап качает ТОЛЬКО оружие/способности (см. ниже). Предметы — одна система добычи с
+  // двумя уровнями редкости: 'common' падает с элитных монстров (выбор из 3, как на левел-апе),
+  // 'artifact' — только с боссов (тоже выбор из 3, но уникальные и эффект намного весомее).
+  // Обычные предметы адаптированы из списка "Normal Artifact" в Magic Survival — часть эффектов
+  // завязана на конкретные их заклинания, тут заменено на общие статы, пригодные для нашей игры.
+  const LOOT = {
+    power: { name: 'Наручи мощи', rarity: 'common', color: 0xe2495c, desc: '+15% урона всех атак', apply: () => { globalDmgMult += 0.15; } },
+    boots: { name: 'Сапоги скорости', rarity: 'common', color: 0x4fb8e0, desc: '+12 скорости передвижения', apply: () => { stats.moveSpeed += 12; } },
+    amulet: { name: 'Талисман притяжения', rarity: 'common', color: 0x55d6c2, desc: '+20 радиус подбора кристаллов', apply: () => { stats.pickupRadius += 20; } },
+    heart: { name: 'Оберег жизни', rarity: 'common', color: 0xffb9c2, desc: '+15 макс. HP, полное восстановление', apply: () => { stats.maxHp += 15; playerHp = stats.maxHp; } },
+    ruby: { name: 'Рубин', rarity: 'common', color: 0xe0384f, desc: '+10% урона всех атак', apply: () => { globalDmgMult += 0.10; } },
+    broom: { name: 'Метла', rarity: 'common', color: 0xc9a15a, desc: '+10 скорости передвижения', apply: () => { stats.moveSpeed += 10; } },
+    target: { name: 'Мишень', rarity: 'common', color: 0xd94f4f, desc: '+6% шанс критического удара', apply: () => { stats.critChance += 0.06; } },
+    rainbow: { name: 'Радуга', rarity: 'common', color: 0xd67ee0, desc: '+25% множитель критического урона', apply: () => { stats.critMult += 0.25; } },
+    crow: { name: 'Ворон', rarity: 'common', color: 0x3a3f52, desc: '+3% шанс крита, +15% множитель крита', apply: () => { stats.critChance += 0.03; stats.critMult += 0.15; } },
+    cloak: { name: 'Плащ тени', rarity: 'common', color: 0x2f6e64, desc: '+8% шанс уклониться от удара', apply: () => { stats.evasion += 0.08; } },
+    potion: { name: 'Фляга здоровья', rarity: 'common', color: 0xff6f91, desc: 'При HP ниже 25% лечит 40% (раз в 45с)', apply: () => {} },
+    scroll: { name: 'Свиток заклинаний', rarity: 'common', color: 0xd9b35c, desc: '+8% урона, -4% перезарядка способностей', apply: () => { globalDmgMult += 0.08; globalCooldownMult = Math.max(0.5, globalCooldownMult - 0.04); } },
+    grimoire: { name: 'Гримуар', rarity: 'common', color: 0x8a4fd9, desc: '-6% перезарядка всех способностей', apply: () => { globalCooldownMult = Math.max(0.5, globalCooldownMult - 0.06); } },
+    harp: { name: 'Арфа', rarity: 'common', color: 0xf5e14a, desc: '+12% длительность заморозки и подчинения', apply: () => { globalDurationMult += 0.12; } },
+    sapphire: { name: 'Сапфир', rarity: 'common', color: 0x9fe8ff, desc: '+15% опыта с кристаллов', apply: () => { xpValueMult += 0.15; } },
+    might: { name: 'Печать могущества', rarity: 'artifact', color: 0xffd700, desc: '+30% урона всех атак', apply: () => { globalDmgMult += 0.3; } },
+    vigor: { name: 'Второе сердце', rarity: 'artifact', color: 0xff4d6d, desc: '+60 макс. HP, полное исцеление', apply: () => { stats.maxHp += 60; playerHp = stats.maxHp; } },
+    hunger: { name: 'Бесконечный голод', rarity: 'artifact', color: 0x8a4fd9, desc: 'Кристаллы опыта дают вдвое больше', apply: () => { xpValueMult *= 2; } },
+    gale: { name: 'Вихрь', rarity: 'artifact', color: 0x9fe8ff, desc: '+40% скорости передвижения', apply: () => { stats.moveSpeed = Math.round(stats.moveSpeed * 1.4); } }
+  };
+  const LOOT_IDS = Object.keys(LOOT);
+  const COMMON_LOOT_IDS = LOOT_IDS.filter((id) => LOOT[id].rarity === 'common');
+  const ARTIFACT_LOOT_IDS = LOOT_IDS.filter((id) => LOOT[id].rarity === 'artifact');
+  const WEAPON_MAX_LEVEL = 5;
+  // Второй этаж прокачки: эволюция качается с 5 до 10, но только после третьей арены
+  // (9-я минута). До этого эволюция существует, но выше 5 не растёт.
+  const EVO_MAX_LEVEL = 10;
+  const EVO_UNLOCK_WAVE = 3;
+  const EVO_POWER_STEP = 0.18;      // +18% к силовым числам за уровень
+  const EVO_COOLDOWN_STEP = 0.04;   // -4% к откату за уровень
+  const EVO_SCALE_FIELDS = ['dmg', 'pctMaxHp', 'pctHeavy', 'radius', 'absorb', 'perEnemy', 'cloneDmg', 'hp'];
+  const CHOICES_PER_LEVELUP = 4;
+
+  // Автогенерация описания апгрейда из разницы цифр между уровнями — не пишем текст руками.
+  const DIFF_FIELDS = [
+    { key: 'count', label: 'штук' },
+    { key: 'radius', label: 'радиус' },
+    { key: 'dmg', label: 'урона' },
+    { key: 'pierce', label: 'пронзание' },
+    { key: 'chainCount', label: 'целей в цепи' },
+    { key: 'chainRadius', label: 'радиус цепи' },
+    { key: 'trailDmg', label: 'урона следа' },
+    { key: 'trailTicks', label: 'сегментов следа' },
+    { key: 'duration', label: 'мс длительности' },
+    { key: 'freeze', label: 'мс заморозки' }
+  ];
+
+  function hexColor(n){ return '#' + n.toString(16).padStart(6, '0'); }
+
+  // Общая разметка одной строки выбора: номер (для клавиш 1-4) + цветная иконка-заглушка
+  // (первая буква названия на фоне цвета оружия/предмета) + название и описание.
+  function choiceRowHtml(num, color, letter, title, desc){
+    return '<span class="num">' + num + '</span>' +
+      '<span class="upgrade-icon" style="background:' + hexColor(color) + '">' + letter + '</span>' +
+      '<span class="upgrade-text"><span class="name">' + title + '</span><span class="desc">' + desc + '</span></span>';
+  }
+
+  // Та же строка, но статичная (для инвентаря в паузе, не кликабельная).
+  function staticRowHtml(color, letter, title, desc){
+    return '<div class="upgrade-btn" style="cursor:default">' +
+      '<span class="upgrade-icon" style="background:' + hexColor(color) + '">' + letter + '</span>' +
+      '<span class="upgrade-text"><span class="name">' + title + '</span><span class="desc">' + desc + '</span></span>' +
+      '</div>';
+  }
+
+  // Таблица для окна «Подробнее»: что показывать и как это назвать по-человечески.
+  const STAT_ROWS = [
+    ['dmg', 'Урон', (v) => Math.round(v)],
+    ['pctMaxHp', 'Доля от макс. HP цели', (v) => Math.round(v * 100) + '%'],
+    ['count', 'Снарядов / областей', (v) => v],
+    ['strikes', 'Ударов за каст', (v) => v],
+    ['chainCount', 'Целей в цепи', (v) => v],
+    ['pierce', 'Пробивает целей', (v) => v],
+    ['cooldown', 'Перезарядка', (v) => v >= 999999 ? 'постоянно' : (v / 1000).toFixed(1) + ' с'],
+    ['duration', 'Длительность', (v) => (v / 1000).toFixed(1) + ' с'],
+    ['tickMs', 'Тик урона', (v) => v + ' мс'],
+    ['radius', 'Радиус', (v) => Math.round(v)],
+    ['orbit', 'Радиус орбиты', (v) => Math.round(v)],
+    ['range', 'Дальность', (v) => Math.round(v)],
+    ['speed', 'Скорость снаряда', (v) => Math.round(v)],
+    ['freeze', 'Заморозка', (v) => (v / 1000).toFixed(1) + ' с'],
+    ['slowMult', 'Замедляет до', (v) => Math.round(v * 100) + '%'],
+    ['knockback', 'Отбрасывание', (v) => v],
+    ['absorb', 'Поглощает ударов', (v) => v],
+    ['amp', 'Усиление урона по цели', (v) => '+' + Math.round((v - 1) * 100) + '%'],
+    ['pull', 'Сила притяжения', (v) => v]
+  ];
+
+  function openDetails(id, cfg, title, desc){
+    document.getElementById('dTitle').textContent = title;
+    document.getElementById('dDesc').textContent = desc || '';
+    const rows = STAT_ROWS.filter((r) => cfg[r[0]] !== undefined && cfg[r[0]] !== 0)
+      .map((r) => '<div class="detail-row"><span>' + r[1] + '</span><span>' + r[2](cfg[r[0]]) + '</span></div>').join('');
+    document.getElementById('dStats').innerHTML = rows || '<div class="detail-row"><span>Пассивный эффект</span><span>—</span></div>';
+    // Эволюции показываем заранее: игрок должен понимать, во что вырастет ветка.
+    const evos = WEAPONS[id] && WEAPONS[id].evolutions;
+    const showEvos = evos && evolved[id] === undefined;
+    document.getElementById('dEvoLabel').hidden = !showEvos;
+    document.getElementById('dEvos').innerHTML = showEvos
+      ? evos.map((e) => '<div class="detail-evo"><b>' + e.name + '</b> — ' + e.desc + '</div>').join('')
+      : '';
+    document.getElementById('detailOverlay').classList.add('show');
+  }
+  function closeDetails(){ document.getElementById('detailOverlay').classList.remove('show'); }
+
+  function describeUpgrade(id, toLevel){
+    const next = WEAPONS[id].levels[toLevel];
+    const cur = WEAPONS[id].levels[toLevel - 1];
+    if (!cur) return next.summary || 'Новое оружие';
+    const parts = [];
+    DIFF_FIELDS.forEach((f) => {
+      const d = (next[f.key] || 0) - (cur[f.key] || 0);
+      if (d) parts.push('+' + d + ' ' + f.label);
+    });
+    if (next.cooldown < cur.cooldown) parts.push('-' + (cur.cooldown - next.cooldown) + 'мс перезарядка');
+    if (next.tickMs !== undefined && next.tickMs < cur.tickMs) parts.push('-' + (cur.tickMs - next.tickMs) + 'мс тик следа');
+    if (next.slowMult !== undefined && next.slowMult < cur.slowMult) parts.push('сильнее замедление');
+    // В карточке нужен короткий итог, а не весь список изменений: остальное игрок
+    // смотрит в «Подробнее».
+    return parts.slice(0, 3).join(', ') || 'улучшение';
+  }
+
+  let scene;
+  let player, cursors, wasd;
+  let enemies, bolts, xpOrbs, runes, itemDrops, hpOrbs, riftNodes, clones, wallBlocks;
+
+  let gridLayer;
+  let hpBarGfx, barrierGfx;
+  let activeBuffs;
+  let runeTimer = 0, nextRuneIn = RUNE_SPAWN_MIN_MS;
+
+  let stats;
+  let owned, evolved, evoLevel, lootCounts, lastFiredAt;
+  let evoUpgradesUnlocked = false;
+  let globalDmgMult = 1;
+  let xpValueMult = 1;
+  let globalCooldownMult = 1;
+  let globalDurationMult = 1;
+  let lastEmergencyHealAt = -999999;
+  let shieldCharges = 0;
+  let shieldRepel = 0;
+  let invulnDmgPenalty = 0;
+  let invulnDmgPenaltyUntil = -999999;
+  let pendingEvolutionFor = null;
+  let playerHp;
+  let lastHitAt = -99999;
+  // Окно выбора закрылось — игрок ещё не успел взяться за управление, а враг уже
+  // стоит вплотную. Без этой форы выбор способности рядом с толпой = смерть.
+  const CHOICE_GRACE_MS = 800;
+  let graceUntil = -99999;
+  let killCount = 0;
+  let level = 1;
+  let xp = 0;
+  let pendingLevelUps = 0;
+  // elapsedMs — механические часы (баффы, подчинение, замедление), идут всегда.
+  // runMs — прогресс забега (таймер на экране, сложность, расписание событий): на арене
+  // босса он стоит, чтобы бой не съедал время до следующего босса.
+  let elapsedMs = 0;
+  let runMs = 0;
+  let waveLevel = 0;
+  let spawnTimer = 0;
+  let nextSpawnIn = 1500;
+  let running = true;
+  let paused = false;
+  let pauseReason = null;
+
+  let bossActive = false;
+  let bossCenter = { x: 0, y: 0 };
+  let arenaBosses = [];
+  let riftNode = null;
+  let riftMarker = null;
+  let riftFight = false;
+  let nextRiftAt = RIFT_FIRST_MS;
+  let nextBossAt = BOSS_INTERVAL_MS;
+
+  // Стоимость уровня. XP_CURVE_POW > 1 — именно он не даёт бесконечно быстро качаться
+  // после эволюций; XP_CURVE_BASE двигает всю кривую целиком.
+  const XP_CURVE_BASE = 16;
+  const XP_CURVE_POW = 1.6;
+  function xpNeeded(lvl){ return Math.round(XP_CURVE_BASE * Math.pow(lvl, XP_CURVE_POW)); }
+
+  // Конфиг эволюции выше 5 уровня считается умножением базовых чисел, а не отдельной
+  // таблицей на каждую из трёх десятков эволюций. Результат кэшируется: currentCfg
+  // зовётся каждый кадр на каждое оружие.
+  let evoCfgCache = {};
+  function currentCfg(id){
+    if (evolved[id] === undefined) return WEAPONS[id].levels[owned[id]];
+    const base = WEAPONS[id].evolutions[evolved[id]].level6;
+    const lv = evoLevel[id] || WEAPON_MAX_LEVEL;
+    if (lv <= WEAPON_MAX_LEVEL) return base;
+    const key = id + ':' + lv;
+    if (evoCfgCache[key]) return evoCfgCache[key];
+    const k = lv - WEAPON_MAX_LEVEL;
+    const scaled = Object.assign({}, base);
+    EVO_SCALE_FIELDS.forEach((f) => {
+      if (typeof scaled[f] === 'number') scaled[f] = scaled[f] * (1 + EVO_POWER_STEP * k);
+    });
+    if (scaled.cooldown && scaled.cooldown < 999999) scaled.cooldown = Math.round(scaled.cooldown * (1 - EVO_COOLDOWN_STEP * k));
+    evoCfgCache[key] = scaled;
+    return scaled;
+  }
+
+  // scene.physics.pause() only stops the Arcade world — tweens (bursts, pulse rings, chain
+  // bolts, the blast's travel animation) and scene.time events (fire-patch ticks, rune
+  // lifetimes) kept running during any paused screen. Route every pause/resume through here
+  // so all three subsystems stay in sync.
+  // Часы Phaser (scene.time.now) продолжают идти даже при scene.time.paused, а на них висят
+  // и перезарядки заклинаний, и кулдаун контактного урона. Без сдвига на длительность паузы
+  // после закрытия окна выбора разом отстреливались ВСЕ способности и мгновенно проходил удар
+  // — со стороны это выглядело как «в паузе игра продолжается и меня убивают».
+  let pausedAt = 0;
+  function pauseGame(reason){
+    if (!paused) pausedAt = scene.time.now;
+    paused = true;
+    releaseStick();
+    pauseReason = reason;
+    scene.physics.pause();
+    scene.tweens.pauseAll();
+    scene.time.paused = true;
+  }
+  function resumeGame(){
+    if (paused && pauseReason && pauseReason !== 'manual'){
+      graceUntil = elapsedMs + CHOICE_GRACE_MS;
+      scene.tweens.add({ targets: player, alpha: 0.35, yoyo: true, repeat: 3, duration: CHOICE_GRACE_MS / 8,
+        onComplete: () => player.setAlpha(1) });
+    }
+    const away = scene.time.now - pausedAt;
+    if (paused && away > 0){
+      Object.keys(lastFiredAt).forEach((id) => { lastFiredAt[id] += away; });
+      lastHitAt += away;
+    }
+    paused = false;
+    pauseReason = null;
+    scene.physics.resume();
+    scene.tweens.resumeAll();
+    scene.time.paused = false;
+  }
+
+  function makeCircleTexture(key, radius, fillColor, strokeColor){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    g.fillStyle(fillColor, 1);
+    g.fillCircle(radius, radius, radius);
+    if (strokeColor !== undefined){
+      g.lineStyle(2, strokeColor, 1);
+      g.strokeCircle(radius, radius, radius - 1);
+    }
+    g.generateTexture(key, radius * 2, radius * 2);
+    g.destroy();
+  }
+
+  function makeDiamondTexture(key, size, fillColor, strokeColor){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    g.fillStyle(fillColor, 1);
+    g.lineStyle(2, strokeColor, 1);
+    g.beginPath();
+    g.moveTo(size / 2, 0);
+    g.lineTo(size, size / 2);
+    g.lineTo(size / 2, size);
+    g.lineTo(0, size / 2);
+    g.closePath();
+    g.fillPath();
+    g.strokePath();
+    g.generateTexture(key, size, size);
+    g.destroy();
+  }
+
+  function makeGridTexture(key, tile, color){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    g.lineStyle(1, color, 1);
+    g.strokeRect(0, 0, tile, tile);
+    g.generateTexture(key, tile, tile);
+    g.destroy();
+  }
+
+  function makeRingTexture(key, radius, color){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    g.lineStyle(3, color, 1);
+    g.strokeCircle(radius, radius, radius - 2);
+    g.generateTexture(key, radius * 2, radius * 2);
+    g.destroy();
+  }
+
+  function makeTriangleTexture(key, size, color){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    g.fillStyle(color, 0.95);
+    g.beginPath();
+    g.moveTo(size, size / 2);
+    g.lineTo(0, 0);
+    g.lineTo(0, size);
+    g.closePath();
+    g.fillPath();
+    g.generateTexture(key, size, size);
+    g.destroy();
+  }
+
+  function makeRectTexture(key, w, h, color){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    g.fillStyle(color, 0.9);
+    g.fillRect(0, 0, w, h);
+    g.lineStyle(2, 0xffffff, 0.9);
+    g.strokeRect(1, 1, w - 2, h - 2);
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+
+  function makeCapsuleTexture(key, w, h, fillColor, strokeColor){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    const r = Math.min(w, h) / 2;
+    g.fillStyle(fillColor, 0.85);
+    g.fillRoundedRect(0, 0, w, h, r);
+    g.lineStyle(2, strokeColor, 1);
+    g.strokeRoundedRect(1, 1, w - 2, h - 2, Math.max(0, r - 1));
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+
+  function preload(){}
+
+  function create(){
+    scene = this;
+    stats = { maxHp: 100, moveSpeed: PLAYER_SPEED, pickupRadius: 132, critChance: 0, critMult: 1.5, evasion: 0 };
+    owned = { fire: 1 };
+    evolved = {};
+    evoLevel = {};
+    evoCfgCache = {};
+    evoUpgradesUnlocked = false;
+    lootCounts = {};
+    globalDmgMult = 1;
+    xpValueMult = 1;
+    globalCooldownMult = 1;
+    globalDurationMult = 1;
+    lastEmergencyHealAt = -999999;
+    shieldCharges = 0;
+    shieldRepel = 0;
+    invulnDmgPenalty = 0;
+    invulnDmgPenaltyUntil = -999999;
+    pendingEvolutionFor = null;
+    activeWaves = [];
+    activeAuras = [];
+    markZones = [];
+    activeMonuments = [];
+    activeWalls = [];
+    activeSaws = [];
+    activeSlashes = [];
+    activeClones = [];
+    bloodCharge = 0;
+    lavaCore = null;
+    tremorDist = 0;
+    tremorLast = { x: 0, y: 0 };
+    facing = { x: 1, y: 0 };
+    lastFiredAt = {};
+    activeBuffs = {};
+    runeTimer = 0;
+    nextRuneIn = Phaser.Math.Between(RUNE_SPAWN_MIN_MS, RUNE_SPAWN_MAX_MS);
+    playerHp = stats.maxHp;
+    killCount = 0;
+    level = 1;
+    xp = 0;
+    pendingLevelUps = 0;
+    elapsedMs = 0;
+    runMs = 0;
+    waveLevel = 0;
+    attached = [];
+    spawnTimer = 0;
+    nextSpawnIn = 1500;
+    running = true;
+    paused = false;
+    pauseReason = null;
+    lastHitAt = -99999;
+    graceUntil = -99999;
+    bossActive = false;
+    arenaBosses = [];
+    riftNode = null;
+    riftMarker = null;
+    riftFight = false;
+    nextRiftAt = RIFT_FIRST_MS;
+    nextBossAt = BOSS_INTERVAL_MS;
+
+
+    document.getElementById('deathOverlay').classList.remove('show');
+    document.getElementById('levelUpOverlay').classList.remove('show');
+    document.getElementById('pauseOverlay').classList.remove('show');
+    document.getElementById('bossWrap').classList.remove('show');
+    document.getElementById('levelBadge').textContent = '1';
+    document.getElementById('xpFill').style.width = '0%';
+    document.getElementById('toast').classList.remove('show');
+    document.getElementById('buffs').innerHTML = '';
+
+    this.cameras.main.setBackgroundColor('#0c0e16');
+    this.cameras.main.setRoundPixels(true);
+
+    makeGridTexture('tex-grid', TILE, 0x1b2030);
+    gridLayer = this.add.tileSprite(-TILE, -TILE, window.innerWidth + TILE * 2, window.innerHeight + TILE * 2, 'tex-grid');
+    gridLayer.setOrigin(0, 0);
+    gridLayer.setScrollFactor(0);
+    gridLayer.setDepth(-20);
+
+    makeCircleTexture('tex-player', 12, 0x55d6c2, 0xbdfff2);
+    makeCircleTexture('tex-enemy', 10, 0xe2495c, 0xffb9c2);
+    makeCircleTexture('tex-enhanced', 13, 0xd8455f, 0xffb066);
+    makeCircleTexture('tex-elite', 16, 0xe2495c, 0xffd700);
+    makeCircleTexture('tex-miniboss', 22, 0xa63fc8, 0xffd700);
+    makeCircleTexture('tex-boss', 28, 0x8a4fd9, 0xf1e2ff);
+    makeCircleTexture('tex-elder', 40, 0x5a1fb0, 0xffd700);
+    makeCircleTexture('tex-bolt', 6, 0xd9f2ee, 0x55d6c2);
+    makeDiamondTexture('tex-spark', 10, 0x55d6c2, 0xffffff);
+    makeDiamondTexture('tex-xp', 10, 0xd9b35c, 0xfff2c9);
+    makeDiamondTexture('tex-rune', 18, 0xffffff, 0xffffff);
+    makeCircleTexture('tex-hp', 9, 0x63d97a, 0xd9ffe0);
+    makeCircleTexture('tex-riftnode', 24, 0x2a1140, 0xb06bff);
+    makeTriangleTexture('tex-arrow', 26, 0xb06bff);
+    makeRingTexture('tex-ring', 50, 0xffffff);
+    makeCapsuleTexture('tex-wave', 46, 520, 0xffffff, 0xffffff);
+    makeCapsuleTexture('tex-rift', 700, 34, 0xffffff, 0xffffff);
+    makeCircleTexture('tex-core', 30, 0xff5a1f, 0xffd08a);
+    makeCircleTexture('tex-saw', 22, 0xdfe6f0, 0x8fa0b8);
+    makeRectTexture('tex-wallblock', 26, 26, 0xb9c2d0);
+    makeCapsuleTexture('tex-slash', 52, 260, 0xffffff, 0xffffff);
+    makeCapsuleTexture('tex-icicle', 36, 13, 0xe8fbff, 0xffffff);
+    makeCapsuleTexture('tex-dragon', 380, 54, 0xffffff, 0xffffff);
+    makeCapsuleTexture('tex-rocket', 30, 13, 0xffffff, 0xffffff);
+    makeCapsuleTexture('tex-gust', 96, 68, 0xffffff, 0xffffff);
+    makeRectTexture('tex-monument', 26, 46, 0xffffff);
+
+    player = this.physics.add.image(0, 0, 'tex-player');
+    player.setDamping(true).setDrag(0.0015);
+    player.body.setCircle(12);
+
+    this.cameras.main.startFollow(player, true, 1, 1);
+    this.cameras.main.setZoom(1);
+
+    hpBarGfx = this.add.graphics().setDepth(50).setScrollFactor(0);
+    barrierGfx = this.add.graphics().setDepth(-10);
+
+    enemies = this.physics.add.group();
+    bolts = this.physics.add.group();
+    xpOrbs = this.physics.add.group();
+    runes = this.physics.add.group();
+    itemDrops = this.physics.add.group();
+    hpOrbs = this.physics.add.group();
+    riftNodes = this.physics.add.group();
+    clones = this.physics.add.group();
+    wallBlocks = this.physics.add.staticGroup();
+
+    cursors = this.input.keyboard.createCursorKeys();
+    wasd = this.input.keyboard.addKeys({ up: 'W', down: 'S', left: 'A', right: 'D' });
+    this.input.keyboard.on('keydown-R', () => { if (!running) scene.scene.restart(); });
+    this.input.keyboard.on('keydown-ONE', () => pickChoiceByIndex(0));
+    this.input.keyboard.on('keydown-TWO', () => pickChoiceByIndex(1));
+    this.input.keyboard.on('keydown-THREE', () => pickChoiceByIndex(2));
+    this.input.keyboard.on('keydown-FOUR', () => pickChoiceByIndex(3));
+    this.input.keyboard.on('keydown-ESC', toggleManualPause);
+
+    // Без этого вся толпа сходится в одну точку и бьёт как один сверхмонстр.
+    // Тяжёлым ставим pushable=false: они расталкивают, но их самих не сносит потоком.
+    this.physics.add.collider(enemies, enemies);
+    this.physics.add.overlap(bolts, enemies, onBoltHitEnemy, null, this);
+    this.physics.add.overlap(player, enemies, onEnemyTouchPlayer, null, this);
+    this.physics.add.overlap(player, xpOrbs, onCollectOrb, null, this);
+    this.physics.add.overlap(player, runes, onCollectRune, null, this);
+    this.physics.add.overlap(player, itemDrops, onCollectItem, null, this);
+    this.physics.add.overlap(player, hpOrbs, onCollectHpOrb, null, this);
+    this.physics.add.overlap(player, riftNodes, onEnterRift, null, this);
+    this.physics.add.overlap(clones, enemies, onEnemyTouchClone, null, this);
+    this.physics.add.collider(enemies, wallBlocks, onEnemyHitWall, null, this);
+
+    this.scale.on('resize', (size) => {
+      if (gridLayer) gridLayer.setSize(size.width + TILE * 2, size.height + TILE * 2);
+    });
+  }
+
+  // Случайная точка на расстоянии cfg.offset[0]..[1] от игрока — для заклинаний, область
+  // которых должна ложиться РЯДОМ, а не под ноги (Землетрясение, Шипы, Лава).
+  function offsetPos(cfg){
+    return ringPos(Phaser.Math.Between(cfg.offset[0], cfg.offset[1]));
+  }
+
+  // N точек вокруг игрока, разложенных по кругу равномерно (с лёгким разбросом).
+  // Чистый рандом сваливал по несколько областей почти в одну точку, и способность
+  // переставала контролировать пространство — ради чего она и нужна.
+  function spreadPositions(cfg, count){
+    const spots = [];
+    const base = Math.random() * Math.PI * 2;
+    for (let i = 0; i < count; i++){
+      const a = base + (Math.PI * 2 / count) * i + (Math.random() - 0.5) * (Math.PI / count);
+      const r = Phaser.Math.Between(cfg.offset[0], cfg.offset[1]);
+      spots.push({ x: player.x + Math.cos(a) * r, y: player.y + Math.sin(a) * r });
+    }
+    return spots;
+  }
+
+  // §37: если эффект описан как «над игроком / вокруг игрока», его трансформ обязан
+  // ехать вместе с игроком, пока эффект не «отпущен». Раньше сфера Ледяного сердца и
+  // прочее оставались там, где игрок стоял в момент каста.
+  // Куда игрок смотрит: последнее ненулевое направление движения. Нужно тем
+  // заклинаниям, которые по спеке бьют «вперёд» (Драконьи стрелы, Пушка, Рассекающая).
+  let facing = { x: 1, y: 0 };
+  function facingAngle(){ return Math.atan2(facing.y, facing.x); }
+
+  let attached = [];
+  function attachToPlayer(obj, offY){
+    attached.push({ obj: obj, offY: offY || 0 });
+    obj.x = player.x;
+    obj.y = player.y + (offY || 0);
+    return obj;
+  }
+  function detachFromPlayer(obj){
+    for (let i = attached.length - 1; i >= 0; i--) if (attached[i].obj === obj) attached.splice(i, 1);
+  }
+  function updateAttached(){
+    for (let i = attached.length - 1; i >= 0; i--){
+      const a = attached[i];
+      if (!a.obj.active){ attached.splice(i, 1); continue; }
+      a.obj.x = player.x;
+      a.obj.y = player.y + a.offY;
+    }
+  }
+
+  function ringPos(radius){
+    const angle = Math.random() * Math.PI * 2;
+    return { x: player.x + Math.cos(angle) * radius, y: player.y + Math.sin(angle) * radius };
+  }
+
+  // Единственная точка рождения врага любой категории — статы считаются из ENEMY_TIERS
+  // и текущих множителей сложности, поэтому баланс правится в одной таблице.
+  function spawnEnemy(tier, x, y){
+    const t = ENEMY_TIERS[tier];
+    // (ниже) slamAt — время следующего удара по площади у тяжёлых врагов
+    const e = enemies.create(x, y, t.tex);
+    e.body.setCircle(t.radius);
+    e.tier = tier;
+    e.heavy = !!t.heavy;
+    e.isBoss = tier === 'boss';
+    e.hp = Math.round(ENEMY_BASE_HP * t.hp * enemyHpMult());
+    e.maxHp = e.hp;
+    e.contactDamage = Math.round(ENEMY_CONTACT_DAMAGE * t.dmg * enemyDmgMult());
+    e.baseSpeed = ENEMY_SPEED * t.speed;
+    e.body.pushable = !t.heavy;
+    e.slowUntil = 0;
+    e.slowMult = 1;
+    e.charmedUntil = null;
+    e.inArena = false;
+    if (t.slamMs) e.slamAt = elapsedMs + t.slamMs;
+    return e;
+  }
+
+  function spawnEnemyAtRing(tier){
+    const p = ringPos(ENEMY_SPAWN_RADIUS);
+    return spawnEnemy(tier, p.x, p.y);
+  }
+
+  // Переиспользуем только рядовых: усиленные, элита и мини-боссы не должны исчезать
+  // просто потому, что игрок от них отбежал.
+  function recycleEnemy(e){
+    const p = ringPos(ENEMY_SPAWN_RADIUS);
+    e.body.reset(p.x, p.y);
+    e.hp = Math.round(ENEMY_BASE_HP * ENEMY_TIERS.normal.hp * enemyHpMult());
+    e.maxHp = e.hp;
+    e.contactDamage = Math.round(ENEMY_CONTACT_DAMAGE * ENEMY_TIERS.normal.dmg * enemyDmgMult());
+    e.slowUntil = 0;
+    e.slowMult = 1;
+    e.charmedUntil = null;
+    e.clearTint();
+  }
+
+  function spawnOrRecycle(){
+    if (bossActive) return;
+    if (enemies.countActive(true) >= enemyCap()){
+      let farthest = null, maxD = -1;
+      enemies.children.each((e) => {
+        if (e.tier !== 'normal' || e.charmedUntil) return;
+        const d = Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y);
+        if (d > maxD){ maxD = d; farthest = e; }
+      });
+      if (farthest) recycleEnemy(farthest);
+    } else {
+      spawnEnemyAtRing(Math.random() < sampleCurve(ENHANCED_SHARE_CURVE, runMs) ? 'enhanced' : 'normal');
+    }
+  }
+
+  // Подчинённые Кровью — свои: наводиться на них нельзя, иначе с этой веткой половина
+  // заклинаний стреляет в собственную армию (урон им всё равно не проходит).
+  function getNearestEnemies(n){
+    const arr = [];
+    enemies.children.each((e) => { if (e.active && !e.charmedUntil) arr.push(e); });
+    arr.sort((a, b) => Phaser.Math.Distance.Between(player.x, player.y, a.x, a.y) - Phaser.Math.Distance.Between(player.x, player.y, b.x, b.y));
+    return arr.slice(0, n);
+  }
+
+  function buffActive(id){ return activeBuffs[id] && elapsedMs < activeBuffs[id]; }
+  function dmgMult(){
+    const penalty = elapsedMs < invulnDmgPenaltyUntil ? (1 - invulnDmgPenalty) : 1;
+    return globalDmgMult * (buffActive('damage') ? 2 : 1) * penalty;
+  }
+
+  // Иний: зоны, внутри которых любой урон по врагу умножается. Список почти всегда
+  // из нуля-одного элемента, поэтому обычный перебор дешевле любой индексации.
+  let markZones = [];
+  function markAmpAt(x, y){
+    let amp = 1;
+    for (let i = 0; i < markZones.length; i++){
+      const z = markZones[i];
+      if (Phaser.Math.Distance.Between(x, y, z.x, z.y) <= z.radius) amp *= z.amp;
+    }
+    return amp;
+  }
+  function updateMarkZones(){
+    for (let i = markZones.length - 1; i >= 0; i--){
+      if (elapsedMs >= markZones[i].until){
+        markZones[i].img.destroy();
+        markZones.splice(i, 1);
+      }
+    }
+  }
+  function fireMarkZone(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    // Метка садится на самого жирного врага — при живом боссе это и будет босс.
+    let target = null, bestHp = -1;
+    enemies.children.each((e) => {
+      if (!e.active || e.charmedUntil) return;
+      if ((e.hp || 0) > bestHp){ bestHp = e.hp || 0; target = e; }
+    });
+    if (!target) return;
+    // Зона всегда одна: иначе метки копятся стопкой в одной точке и перемножаются.
+    while (markZones.length){ markZones[0].img.destroy(); markZones.shift(); }
+    const x = target.heavy ? target.x : target.x + (Math.random() - 0.5) * 90;
+    const y = target.heavy ? target.y : target.y + (Math.random() - 0.5) * 90;
+    const img = scene.add.image(x, y, 'tex-ring').setTint(color).setAlpha(0.5).setScale(cfg.radius / 50).setDepth(-4);
+    scene.tweens.add({ targets: img, alpha: 0.22, yoyo: true, repeat: -1, duration: 600 });
+    markZones.push({ x: x, y: y, radius: cfg.radius, amp: cfg.amp, until: elapsedMs + cfg.duration, img: img });
+  }
+
+  function applyAreaHit(e, cfg, color){
+    damageEnemy(e, spellDamage(cfg, e), color);
+    if (!e.active) return;
+    if (cfg.freeze){ e.slowUntil = elapsedMs + cfg.freeze * globalDurationMult; e.slowMult = 0; }
+    else if (cfg.slowMult){ e.slowUntil = elapsedMs + (cfg.slowMs || 500) * globalDurationMult; e.slowMult = cfg.slowMult; }
+    if (cfg.knockback && !e.heavy){
+      const angle = Phaser.Math.Angle.Between(player.x, player.y, e.x, e.y);
+      e.x += Math.cos(angle) * cfg.knockback;
+      e.y += Math.sin(angle) * cfg.knockback;
+      if (e.body) e.body.updateFromGameObject();
+    }
+  }
+
+  function enemiesInRadius(cx, cy, radius){
+    const hits = [];
+    enemies.children.each((e) => {
+      if (e.active && Phaser.Math.Distance.Between(cx, cy, e.x, e.y) <= radius) hits.push(e);
+    });
+    return hits;
+  }
+
+  function fireArea(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    const c = cfg.offset ? offsetPos(cfg) : { x: player.x, y: player.y };
+    enemiesInRadius(c.x, c.y, cfg.radius).forEach((e) => applyAreaHit(e, cfg, color));
+    spawnPulseRing(c.x, c.y, cfg.radius, color);
+  }
+
+  // Область с тиками по времени. atPlayer:true — область встаёт под игроком (Металл, Дождь),
+  // иначе на ближайшем враге (Лава). count — сколько луж создаётся за каст.
+  function fireZone(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    let spots = [];
+    const count = cfg.count || 1;
+    if (cfg.offset){
+      spots = spreadPositions(cfg, count);
+    } else if (cfg.atPlayer){
+      spots.push({ x: player.x, y: player.y });
+    } else {
+      const targets = getNearestEnemies(count);
+      for (let i = 0; i < count; i++){
+        const t = targets[i];
+        spots.push(t ? { x: t.x, y: t.y } : ringPos(120 + Math.random() * 160));
+      }
+    }
+
+    spots.forEach((spot) => {
+      const visual = scene.add.image(spot.x, spot.y, 'tex-ring').setTint(color).setAlpha(0.28).setScale(cfg.radius / 50).setDepth(-4);
+      const tick = () => {
+        if (!visual.active) return;
+        enemiesInRadius(spot.x, spot.y, cfg.radius).forEach((e) => damageEnemy(e, spellDamage(cfg, e), color));
+      };
+      const totalTicks = Math.max(1, Math.round(cfg.duration / cfg.tickMs));
+      tick();
+      const timer = scene.time.addEvent({ delay: cfg.tickMs, repeat: totalTicks - 1, callback: tick });
+      scene.time.delayedCall(cfg.duration + 150, () => { timer.remove(); visual.destroy(); });
+    });
+  }
+
+  // Аура — область, привязанная к игроку и живущая заданное время (Солнце).
+  // Ведём вручную в updateAuras, чтобы она ездила вместе с персонажем.
+  let activeAuras = [];
+  function fireAura(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    const img = attachToPlayer(scene.add.image(player.x, player.y, 'tex-ring').setTint(color).setAlpha(0.3).setScale(cfg.radius / 50).setDepth(-3));
+    // Само солнце — отдельный объект над головой, чтобы источник эффекта был виден.
+    const core = attachToPlayer(scene.add.image(player.x, player.y, 'tex-bolt').setTint(color).setScale(2.6).setDepth(44), -40);
+    scene.tweens.add({ targets: core, scale: 3.1, yoyo: true, repeat: -1, duration: cfg.tickMs, ease: 'Sine.easeInOut' });
+    activeAuras.push({ img, core, cfg, color, until: elapsedMs + cfg.duration, nextTick: elapsedMs });
+  }
+  function updateAuras(){
+    for (let i = activeAuras.length - 1; i >= 0; i--){
+      const a = activeAuras[i];
+      if (elapsedMs >= a.nextTick){
+        a.nextTick = elapsedMs + a.cfg.tickMs;
+        enemiesInRadius(player.x, player.y, a.cfg.radius).forEach((e) => damageEnemy(e, spellDamage(a.cfg, e), a.color));
+        spawnPulseRing(player.x, player.y, a.cfg.radius, a.color);
+      }
+      if (elapsedMs >= a.until){
+        a.img.destroy();
+        if (a.core) a.core.destroy();
+        activeAuras.splice(i, 1);
+      }
+    }
+  }
+
+  // Гейзер: земля сначала вспухает (зрителю видно, куда бить не надо), и только потом
+  // бьёт. Задержка windup — это и есть «анимация подготовки» из §38 спеки.
+  function fireGeyser(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    const p = cfg.offset ? offsetPos(cfg) : ringPos(160);
+    const tell = scene.add.image(p.x, p.y, 'tex-ring').setTint(color).setAlpha(0.22).setScale(cfg.radius / 50 * 0.3).setDepth(-4);
+    scene.tweens.add({
+      targets: tell, scale: cfg.radius / 50, alpha: 0.55,
+      duration: cfg.windup || 420, ease: 'Quad.easeIn',
+      onComplete: () => {
+        tell.destroy();
+        enemiesInRadius(p.x, p.y, cfg.radius).forEach((e) => applyAreaHit(e, cfg, color));
+        spawnPulseRing(p.x, p.y, cfg.radius, color);
+        spawnBurst(p.x, p.y, color, 16);
+        scene.cameras.main.shake(140, 0.0035);
+      }
+    });
+  }
+
+  // Метеоритный дождь: много точек падения вокруг игрока, у каждой своя тень-предупреждение
+  // и свой метеор, летящий сверху.
+  function fireMeteors(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    spreadPositions(cfg, cfg.count || 10).forEach((p) => {
+      const delay = Math.random() * 260;
+      const shadow = scene.add.image(p.x, p.y, 'tex-ring').setTint(color).setAlpha(0.3).setScale(cfg.radius / 50 * 0.6).setDepth(-4);
+      const rock = scene.add.image(p.x, p.y - 260, 'tex-bolt').setTint(color).setScale(2.4).setDepth(46);
+      scene.tweens.add({ targets: rock, y: p.y, duration: cfg.windup || 520, delay: delay, ease: 'Quad.easeIn',
+        onComplete: () => {
+          rock.destroy();
+          shadow.destroy();
+          enemiesInRadius(p.x, p.y, cfg.radius).forEach((e) => damageEnemy(e, spellDamage(cfg, e), color));
+          spawnPulseRing(p.x, p.y, cfg.radius, color);
+          spawnBurst(p.x, p.y, color, 8);
+        }
+      });
+    });
+  }
+
+  // Разлом: трещина растёт от игрока в сторону ближайшего врага до края экрана, затем
+  // стягивает к линии и рвёт по доле здоровья. Тяжёлым (боссы, мини-боссы) — своя доля,
+  // иначе 50% максимума превращали бы любую арену в две кнопки.
+  function fireRift(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    const target = getNearestEnemies(1)[0];
+    const angle = target ? Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y) : facingAngle();
+    const cam = scene.cameras.main;
+    const length = Math.hypot(cam.width, cam.height) / 2 + 120;
+    const ox = player.x, oy = player.y;
+
+    const crack = scene.add.image(ox, oy, 'tex-rift').setTint(color).setDepth(-4).setAlpha(0.85);
+    crack.setOrigin(0, 0.5);
+    crack.setRotation(angle);
+    crack.scaleX = 0.02;
+    scene.tweens.add({
+      targets: crack, scaleX: length / 700, duration: cfg.windup || 480, ease: 'Quad.easeOut',
+      onComplete: () => {
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        enemies.children.each((e) => {
+          if (!e.active || e.charmedUntil) return;
+          const dx = e.x - ox, dy = e.y - oy;
+          const along = dx * cosA + dy * sinA;
+          let perp = -dx * sinA + dy * cosA;
+          // Сначала стягиваем к линии всех в широкой полосе — в этом и смысл притяжения:
+          // собрать толпу В трещину, а не подвинуть тех, кто и так уже в ней.
+          const grab = cfg.halfWidth * (cfg.pullBand || 3);
+          if (along < 0 || along > length || Math.abs(perp) > grab) return;
+          if (cfg.pull && !e.heavy){
+            const shift = Math.min(Math.abs(perp), cfg.pull) * (perp > 0 ? -1 : 1);
+            e.x -= sinA * shift;
+            e.y += cosA * shift;
+            if (e.body) e.body.updateFromGameObject();
+            perp += shift;
+          }
+          if (Math.abs(perp) > cfg.halfWidth) return;
+          const pct = e.heavy ? (cfg.pctHeavy || 0.1) : (cfg.pctMaxHp || 0.5);
+          damageEnemy(e, (e.maxHp || ENEMY_BASE_HP) * pct * dmgMult(), color);
+        });
+        spawnBurst(ox + cosA * length * 0.5, oy + sinA * length * 0.5, color, 18);
+        scene.cameras.main.shake(260, 0.006);
+        scene.tweens.add({ targets: crack, alpha: 0, duration: 350, onComplete: () => crack.destroy() });
+      }
+    });
+  }
+
+  // Дрожь: не по таймеру, а по пройденному расстоянию — стоящий на месте игрок не
+  // получает от неё ничего, бегущий получает волну каждые stepDist пикселей.
+  let tremorDist = 0;
+  function updateTremor(){
+    if (evolved.earth === undefined) return;
+    const evo = WEAPONS.earth.evolutions[evolved.earth];
+    if (!evo || evo.type !== 'tremor') return;
+    const cfg = evo.level6;
+    const moved = Math.hypot(player.x - tremorLast.x, player.y - tremorLast.y);
+    tremorLast.x = player.x;
+    tremorLast.y = player.y;
+    tremorDist += moved;
+    if (tremorDist < cfg.stepDist) return;
+    tremorDist = 0;
+    const hits = enemiesInRadius(player.x, player.y, cfg.radius);
+    const dmg = (cfg.dmg + hits.length * (cfg.perEnemy || 0)) * dmgMult();
+    hits.forEach((e) => damageEnemy(e, dmg, WEAPONS.earth.color));
+    spawnPulseRing(player.x, player.y, cfg.radius, WEAPONS.earth.color);
+  }
+  let tremorLast = { x: 0, y: 0 };
+
+  // Ядро: тяжёлый шар на орбите вокруг игрока, живёт до конца забега.
+  let lavaCore = null;
+  function spawnLavaCore(){
+    const cfg = WEAPONS.lava.evolutions.find((e) => e.type === 'core').level6;
+    const img = scene.add.image(player.x, player.y, 'tex-core').setDepth(45);
+    lavaCore = { img: img, cfg: cfg, angle: 0, hits: new Map() };
+  }
+  function updateLavaCore(delta){
+    if (!lavaCore) return;
+    const cfg = lavaCore.cfg;
+    lavaCore.angle += cfg.spin * delta / 1000;
+    lavaCore.img.x = player.x + Math.cos(lavaCore.angle) * cfg.orbit;
+    lavaCore.img.y = player.y + Math.sin(lavaCore.angle) * cfg.orbit;
+    lavaCore.img.rotation = lavaCore.angle;
+    enemiesInRadius(lavaCore.img.x, lavaCore.img.y, cfg.radius).forEach((e) => {
+      const last = lavaCore.hits.get(e) || -99999;
+      if (elapsedMs - last < (cfg.rehit || 700)) return;   // один враг не должен гореть каждый кадр
+      lavaCore.hits.set(e, elapsedMs);
+      damageEnemy(e, spellDamage(cfg, e), WEAPONS.lava.color);
+    });
+  }
+
+  // Стена: Arcade не умеет поворачивать прямоугольные тела, поэтому каждая стена —
+  // это цепочка небольших статичных блоков вдоль отрезка. Прочность общая на стену.
+  let activeWalls = [];
+  function fireWall(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    const base = facingAngle();
+    [-1, 1].forEach((side) => {
+      const a = base + side * (cfg.spread || 0.85);
+      const cx = player.x + Math.cos(a) * cfg.dist;
+      const cy = player.y + Math.sin(a) * cfg.dist;
+      const px = -Math.sin(a), py = Math.cos(a);         // ось стены — поперёк направления
+      const n = Math.max(2, Math.round(cfg.length / cfg.block));
+      const hp = Math.round(cfg.hp * waveMult(0.5));   // стена крепнет вместе с волнами
+      const wall = { blocks: [], hp: hp, maxHp: hp, until: elapsedMs + cfg.duration };
+      for (let i = 0; i < n; i++){
+        const t = (i / (n - 1) - 0.5) * cfg.length;
+        const b = wallBlocks.create(cx + px * t, cy + py * t, 'tex-wallblock');
+        b.setTint(color);
+        b.wall = wall;
+        b.body.updateFromGameObject();
+        wall.blocks.push(b);
+      }
+      activeWalls.push(wall);
+    });
+  }
+  function damageWall(wall, dmg){
+    wall.hp -= dmg;
+    wall.blocks.forEach((b) => { if (b.active) b.setAlpha(Math.max(0.25, wall.hp / wall.maxHp)); });
+    if (wall.hp <= 0) destroyWall(wall);
+  }
+  function destroyWall(wall){
+    wall.blocks.forEach((b) => { if (b.active){ spawnBurst(b.x, b.y, 0xb9c2d0, 4); b.destroy(); } });
+    wall.blocks.length = 0;
+    const i = activeWalls.indexOf(wall);
+    if (i > -1) activeWalls.splice(i, 1);
+  }
+  function onEnemyHitWall(enemy, block){
+    const wall = block.wall;
+    if (!wall) return;
+    if (!enemy.lastWallHitAt || elapsedMs - enemy.lastWallHitAt > 600){
+      enemy.lastWallHitAt = elapsedMs;
+      damageWall(wall, enemy.contactDamage || 10);
+    }
+  }
+  function updateWalls(){
+    for (let i = activeWalls.length - 1; i >= 0; i--){
+      if (elapsedMs >= activeWalls[i].until) destroyWall(activeWalls[i]);
+    }
+  }
+
+  // Пила: два диска расходятся в стороны и обходят игрока каждый на свои 180°.
+  let activeSaws = [];
+  function fireSaw(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const start = facingAngle();
+    [1, -1].forEach((dir) => {
+      const img = scene.add.image(player.x, player.y, 'tex-saw').setTint(WEAPONS[weaponId].color).setDepth(44);
+      activeSaws.push({ img: img, cfg: cfg, dir: dir, angle: start, swept: 0, hits: new Set(), color: WEAPONS[weaponId].color });
+    });
+  }
+  function updateSaws(delta){
+    for (let i = activeSaws.length - 1; i >= 0; i--){
+      const w = activeSaws[i];
+      const step = w.cfg.spin * delta / 1000;
+      w.angle += w.dir * step;
+      w.swept += step;
+      w.img.x = player.x + Math.cos(w.angle) * w.cfg.orbit;
+      w.img.y = player.y + Math.sin(w.angle) * w.cfg.orbit;
+      w.img.rotation += w.dir * step * 3;
+      enemiesInRadius(w.img.x, w.img.y, w.cfg.radius).forEach((e) => {
+        if (w.hits.has(e)) return;                      // каждый враг ловит пилу один раз за проход
+        w.hits.add(e);
+        damageEnemy(e, spellDamage(w.cfg, e), w.color);
+      });
+      if (w.swept >= Math.PI){
+        w.img.destroy();
+        activeSaws.splice(i, 1);
+      }
+    }
+  }
+
+  // Рассекающая: волна летит вперёд и расширяется — узкая у игрока, широкая вдали.
+  let activeSlashes = [];
+  function fireSlash(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    for (let i = 0; i < (cfg.count || 1); i++){
+      scene.time.delayedCall(i * (cfg.gap || 140), () => {
+        if (!running || paused) return;
+        const angle = facingAngle();
+        const img = scene.add.image(player.x, player.y, 'tex-slash').setTint(WEAPONS[weaponId].color).setDepth(32).setRotation(angle);
+        img.setScale(0.25, (cfg.w0 || 30) / 130);
+        activeSlashes.push({ img: img, cfg: cfg, angle: angle, age: 0, hits: new Set(), color: WEAPONS[weaponId].color, dmg: cfg.dmg * dmgMult() });
+      });
+    }
+  }
+  function updateSlashes(delta){
+    for (let i = activeSlashes.length - 1; i >= 0; i--){
+      const w = activeSlashes[i];
+      w.age += delta;
+      const k = Math.min(1, w.age / w.cfg.life);
+      const half = Phaser.Math.Linear(w.cfg.w0, w.cfg.w1, k);
+      w.img.x += Math.cos(w.angle) * w.cfg.speed * delta / 1000;
+      w.img.y += Math.sin(w.angle) * w.cfg.speed * delta / 1000;
+      w.img.setScale(0.25 + k * 0.5, half / 130);
+      const cosA = Math.cos(w.angle), sinA = Math.sin(w.angle);
+      enemies.children.each((e) => {
+        if (!e.active || e.charmedUntil || w.hits.has(e)) return;
+        const dx = e.x - w.img.x, dy = e.y - w.img.y;
+        const along = dx * cosA + dy * sinA;
+        const perp = -dx * sinA + dy * cosA;
+        if (Math.abs(along) <= 26 && Math.abs(perp) <= half){
+          w.hits.add(e);
+          damageEnemy(e, w.dmg, w.color);
+        }
+      });
+      if (k >= 1){
+        w.img.destroy();
+        activeSlashes.splice(i, 1);
+      }
+    }
+  }
+
+  // Залп строго вперёд, по направлению бега (Пушка, Драконьи стрелы).
+  function fireForwardVolley(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const a = facingAngle();
+    const count = cfg.count || 1;
+    for (let i = 0; i < count; i++){
+      const spread = (i - (count - 1) / 2) * 0.12;
+      spawnDirectionalProjectile(weaponId, cfg, player.x, player.y, a + spread, time);
+    }
+  }
+
+  // Клоны: Кровь копится с каждого убитого и оборачивается двойником игрока.
+  let bloodCharge = 0;
+  let activeClones = [];
+  // Заклинания, которые двойник умеет повторять. Всё, что завязано на позицию игрока
+  // (барьеры, ауры, глобальные) намеренно не входит: двойник — атакующая копия.
+  const CLONE_CASTABLE = { volley: 1, trailshot: 1, forwardvolley: 1, radialvolley: 1, chain: 1, delayedblast: 1, multiburst: 1, area: 1 };
+  function weaponType(id){
+    const evo = evolved[id] !== undefined ? WEAPONS[id].evolutions[evolved[id]] : null;
+    return (evo && evo.type) || WEAPONS[id].type;
+  }
+
+  function maybeSpawnClone(){
+    if (!charmCfgFlag('clones')) return;
+    const cfg = currentCfg('charm');
+    if (activeClones.length >= (cfg.cloneMax || 3)) return;
+    if (bloodCharge < (cfg.cloneCost || 14)) return;
+    bloodCharge -= cfg.cloneCost || 14;
+    // Слот на орбите вокруг игрока — двойники не должны слипаться в одну точку.
+    const used = activeClones.map((c) => c.slot);
+    let slot = 0;
+    while (used.indexOf(slot) > -1) slot += 1;
+    const c = clones.create(player.x, player.y, 'tex-player');
+    c.body.setCircle(12);
+    // Призрак: тот же цвет, что у игрока, полупрозрачный.
+    c.setTint(0x8ff0e2).setAlpha(0.45).setScale(0.9);
+    c.slot = slot;
+    c.hp = Math.max(1, Math.round(stats.maxHp * (cfg.clonePart || 0.25)));
+    c.until = elapsedMs + (cfg.cloneLife || 14000);
+    c.nextAttackAt = 0;
+    activeClones.push(c);
+    scene.tweens.add({ targets: c, alpha: 0.62, yoyo: true, repeat: -1, duration: 900 });
+    spawnBurst(c.x, c.y, 0x8ff0e2, 8);
+    showToast('Двойник поднялся');
+  }
+
+  // Двойник кастует то же, что и игрок, но вполсилы (clonePower). Урон масштабируется
+  // копией конфига, поэтому ничего в самих заклинаниях трогать не нужно.
+  function cloneCast(c, cfg, time){
+    const ids = ACTIVE_WEAPON_IDS.filter((id) => owned[id] && CLONE_CASTABLE[weaponType(id)]);
+    const target = getNearestEnemies(1)[0];
+    if (!target) return;
+    const power = cfg.clonePower || 0.2;
+    if (!ids.length){
+      const a = Phaser.Math.Angle.Between(c.x, c.y, target.x, target.y);
+      spawnDirectionalProjectile('charm', { dmg: 30 * power, pierce: 0 }, c.x, c.y, a, time);
+      return;
+    }
+    const id = Phaser.Utils.Array.GetRandom(ids);
+    const base = currentCfg(id);
+    const cast = Object.assign({}, base);
+    if (typeof cast.dmg === 'number') cast.dmg *= power;
+    if (typeof cast.pctMaxHp === 'number') cast.pctMaxHp *= power;
+    const type = weaponType(id);
+    const color = WEAPONS[id].color;
+    if (type === 'chain'){
+      walkChain(target, cast, color);
+    } else if (type === 'area' || type === 'multiburst'){
+      enemiesInRadius(c.x, c.y, cast.radius || 120).forEach((e) => applyAreaHit(e, cast, color));
+      spawnPulseRing(c.x, c.y, cast.radius || 120, color);
+    } else if (type === 'radialvolley'){
+      const n = Math.max(3, Math.round((cast.count || 6) / 2));
+      for (let i = 0; i < n; i++) spawnDirectionalProjectile(id, cast, c.x, c.y, (Math.PI * 2 / n) * i, time);
+    } else {
+      const a = Phaser.Math.Angle.Between(c.x, c.y, target.x, target.y);
+      spawnDirectionalProjectile(id, cast, c.x, c.y, a, time);
+    }
+  }
+  function updateClones(time){
+    const cfg = owned.charm ? currentCfg('charm') : null;
+    for (let i = activeClones.length - 1; i >= 0; i--){
+      const c = activeClones[i];
+      if (!c.active || elapsedMs >= c.until){
+        if (c.active){ spawnBurst(c.x, c.y, 0xb02040, 6); c.destroy(); }
+        activeClones.splice(i, 1);
+        continue;
+      }
+      // Держится на своём месте орбиты вокруг игрока и едет вместе с ним.
+      const orbit = (cfg && cfg.cloneOrbit) || 84;
+      const spin = (cfg && cfg.cloneSpin) || 0.7;
+      const slots = Math.max(1, (cfg && cfg.cloneMax) || 3);
+      const ang = elapsedMs / 1000 * spin + (Math.PI * 2 / slots) * c.slot;
+      const tx = player.x + Math.cos(ang) * orbit;
+      const ty = player.y + Math.sin(ang) * orbit;
+      const dx = tx - c.x, dy = ty - c.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 4){
+        const sp = Math.min(stats.moveSpeed * 1.6, dist * 6);
+        c.setVelocity((dx / dist) * sp, (dy / dist) * sp);
+      } else {
+        c.setVelocity(0, 0);
+      }
+      if (cfg && time >= c.nextAttackAt){
+        c.nextAttackAt = time + (cfg.cloneAttackMs || 850);
+        cloneCast(c, cfg, time);
+      }
+    }
+  }
+  function onEnemyTouchClone(clone, enemy){
+    if (enemy.charmedUntil) return;
+    if (!clone.lastHurtAt || elapsedMs - clone.lastHurtAt > 700){
+      clone.lastHurtAt = elapsedMs;
+      clone.hp -= enemy.contactDamage || 10;
+      spawnBurst(clone.x, clone.y, 0xe2495c, 4);
+      if (clone.hp <= 0) clone.until = 0;
+    }
+  }
+
+  // Несколько отдельных взрывов, каждый на своей ближайшей цели (Лёд, Валуны).
+  function fireMultiBurst(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    // offset — взрывы ложатся вокруг игрока (§8.1: «область вокруг игрока»), иначе
+    // старое поведение: каждый взрыв на своей ближайшей цели.
+    let spots = [];
+    if (cfg.offset){
+      spots = spreadPositions(cfg, cfg.count || 1);
+    } else {
+      getNearestEnemies(cfg.count).forEach((t) => spots.push({ x: t.x, y: t.y }));
+    }
+    spots.forEach((c) => {
+      enemiesInRadius(c.x, c.y, cfg.radius).forEach((e) => applyAreaHit(e, cfg, color));
+      spawnPulseRing(c.x, c.y, cfg.radius, color);
+    });
+  }
+
+  // Монументы: столбы вырастают из земли шестиугольником и НЕСКОЛЬКО СЕКУНД держат
+  // площадку — тикают уроном и замедляют всех рядом. Это контроль территории, а не
+  // разовая вспышка, поэтому и перезарядка длиннее их времени жизни.
+  let activeMonuments = [];
+  function fireMonuments(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    const count = cfg.count || 6;
+    for (let i = 0; i < count; i++){
+      const angle = (Math.PI * 2 / count) * i;
+      const cx = player.x + Math.cos(angle) * cfg.orbit;
+      const cy = player.y + Math.sin(angle) * cfg.orbit;
+      const mon = scene.add.image(cx, cy + 30, 'tex-monument').setTint(color).setDepth(41).setScale(1, 0.15);
+      scene.tweens.add({ targets: mon, y: cy - 14, scaleY: 1.15, duration: 240, ease: 'Back.easeOut' });
+      const aura = scene.add.image(cx, cy, 'tex-ring').setTint(color).setAlpha(0.2).setScale(cfg.radius / 50).setDepth(-4);
+      scene.tweens.add({ targets: aura, alpha: 0.32, yoyo: true, repeat: -1, duration: cfg.tickMs || 700 });
+      spawnBurst(cx, cy, color, 6);
+      activeMonuments.push({ mon, aura, x: cx, y: cy, cfg, color, until: elapsedMs + cfg.duration, nextTick: elapsedMs });
+    }
+    scene.cameras.main.shake(160, 0.003);
+  }
+  // Боссы не должны быть просто толстыми мешками, которые ходят к игроку: раз в
+  // несколько секунд они бьют по площади с предупреждением, и от удара надо уходить.
+  function updateBossSlams(){
+    enemies.children.each((e) => {
+      if (!e.active || !e.slamAt || e.charmedUntil) return;
+      if (elapsedMs < e.slamAt) return;
+      const t = ENEMY_TIERS[e.tier];
+      e.slamAt = elapsedMs + t.slamMs;
+      const x = e.x, y = e.y, r = t.slamRadius, dmg = Math.round(t.slamDmg * enemyDmgMult());
+      const tell = scene.add.image(x, y, 'tex-ring').setTint(0xe2495c).setAlpha(0.28).setScale(r / 50 * 0.35).setDepth(-4);
+      scene.tweens.add({ targets: tell, scale: r / 50, alpha: 0.55, duration: 700, ease: 'Quad.easeIn',
+        onComplete: () => {
+          tell.destroy();
+          spawnPulseRing(x, y, r, 0xe2495c);
+          if (!running || paused || elapsedMs < graceUntil) return;
+          if (Phaser.Math.Distance.Between(x, y, player.x, player.y) > r) return;
+          if (Math.random() < stats.evasion) return;
+          if (buffActive('invuln')) return;
+          if (shieldCharges > 0){ shieldCharges -= 1; spawnPulseRing(player.x, player.y, 60, 0x8fd6ff); return; }
+          playerHp = Math.max(0, playerHp - dmg);
+          scene.cameras.main.shake(220, 0.006);
+          maybeEmergencyHeal();
+          if (playerHp <= 0) doGameOver();
+        } });
+    });
+  }
+
+  function updateMonuments(){
+    for (let i = activeMonuments.length - 1; i >= 0; i--){
+      const m = activeMonuments[i];
+      if (elapsedMs >= m.nextTick){
+        m.nextTick = elapsedMs + (m.cfg.tickMs || 700);
+        enemiesInRadius(m.x, m.y, m.cfg.radius).forEach((e) => {
+          damageEnemy(e, spellDamage(m.cfg, e), m.color);
+          if (e.active && m.cfg.slowMult){
+            e.slowUntil = elapsedMs + (m.cfg.slowMs || 900) * globalDurationMult;
+            e.slowMult = m.cfg.slowMult;
+          }
+        });
+        spawnPulseRing(m.x, m.y, m.cfg.radius, m.color);
+      }
+      if (elapsedMs >= m.until){
+        const mon = m.mon, aura = m.aura;
+        scene.tweens.add({ targets: mon, y: mon.y + 34, scaleY: 0.15, alpha: 0.15, duration: 260, onComplete: () => mon.destroy() });
+        scene.tweens.add({ targets: aura, alpha: 0, duration: 260, onComplete: () => aura.destroy() });
+        activeMonuments.splice(i, 1);
+      }
+    }
+  }
+
+  // Залп снарядов в N ближайших целей.
+  function fireVolley(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const targets = getNearestEnemies(cfg.count);
+    if (!targets.length) return;
+    targets.forEach((t) => spawnProjectile(weaponId, cfg, t, time));
+  }
+
+  // Радиальный залп — снаряды расходятся по кругу от игрока (Залп стрел, Ледяное сердце),
+  // а не летят в конкретные цели. charge — задержка перед выстрелом (сфера "копит силу").
+  function fireRadialVolley(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const shoot = () => {
+      // stagger — стрелы уходят одна за другой по часовой стрелке (Залп стрел):
+      // это должно читаться как быстрый круговой веер, а не как разовый взрыв из 10 снарядов.
+      // Каждая стрела стартует из ТЕКУЩЕЙ позиции игрока, поэтому залп едет вместе с ним.
+      if (cfg.stagger){
+        const base = facingAngle();
+        for (let i = 0; i < cfg.count; i++){
+          scene.time.delayedCall(i * cfg.stagger, () => {
+            if (!running || paused) return;
+            spawnDirectionalProjectile(weaponId, cfg, player.x, player.y, base + (Math.PI * 2 / cfg.count) * i, scene.time.now);
+          });
+        }
+        return;
+      }
+      for (let i = 0; i < cfg.count; i++){
+        const angle = (Math.PI * 2 / cfg.count) * i;
+        spawnDirectionalProjectile(weaponId, cfg, player.x, player.y, angle, scene.time.now);
+      }
+    };
+    if (cfg.charge){
+      const color = WEAPONS[weaponId].color;
+      const orb = attachToPlayer(scene.add.image(player.x, player.y, 'tex-bolt').setTint(color).setScale(0.6).setDepth(44), -34);
+      const halo = attachToPlayer(scene.add.image(player.x, player.y, 'tex-ring').setTint(color).setAlpha(0.5).setScale(0.4).setDepth(43), -34);
+      // энергия «стягивается» в сферу: искры летят к ней снаружи
+      const sparks = scene.time.addEvent({ delay: 90, repeat: Math.floor(cfg.charge / 90), callback: () => {
+        const a = Math.random() * Math.PI * 2;
+        const sp = scene.add.image(orb.x + Math.cos(a) * 46, orb.y + Math.sin(a) * 46, 'tex-spark').setTint(color).setDepth(43);
+        scene.tweens.add({ targets: sp, x: orb.x, y: orb.y, alpha: 0.2, scale: 0.4, duration: 180, onComplete: () => sp.destroy() });
+      } });
+      scene.tweens.add({ targets: halo, scale: 1.6, alpha: 0, duration: cfg.charge });
+      scene.tweens.add({ targets: orb, scale: 3.2, duration: cfg.charge, ease: 'Quad.easeIn', onComplete: () => {
+        sparks.remove();
+        spawnPulseRing(orb.x, orb.y, 120, color);
+        spawnBurst(orb.x, orb.y, 0xffffff, 12);
+        detachFromPlayer(orb); detachFromPlayer(halo);
+        orb.destroy(); halo.destroy();
+        shoot();
+      } });
+    } else {
+      shoot();
+    }
+  }
+
+  function spawnDirectionalProjectile(weaponId, cfg, x, y, angle, time){
+    const b = bolts.create(x, y, cfg.projTex || 'tex-bolt');
+    b.body.setCircle(6);
+    b.setTint(WEAPONS[weaponId].color);
+    if (cfg.scale) b.setScale(cfg.scale);
+    if (cfg.alpha) b.setAlpha(cfg.alpha);
+    scene.physics.velocityFromRotation(angle, BOLT_SPEED, b.body.velocity);
+    b.setRotation(angle);
+    b.lifespan = 1400;
+    b.spawnedAt = time;
+    b.dmg = cfg.dmg * dmgMult();
+    b.pierceLeft = cfg.pierce || 0;
+    b.knockback = cfg.knockback || 0;
+    b.dispel = !!cfg.dispel;
+    b.color = WEAPONS[weaponId].color;
+    b.hitEnemies = new Set();
+    if (cfg.trailTicks){
+      for (let i = 1; i <= cfg.trailTicks; i++){
+        const dist = i * cfg.trailGap;
+        spawnFirePatch(x + Math.cos(angle) * dist, y + Math.sin(angle) * dist, cfg.trailDmg * dmgMult(), cfg.tickMs);
+      }
+    }
+  }
+
+  // Барьер — заряды, которые гасят входящий урон (см. onEnemyTouchPlayer).
+  function fireBarrier(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    shieldCharges = cfg.absorb;
+    shieldRepel = cfg.repel || 0;
+    showToast('Барьер восстановлен');
+  }
+
+  // "Неуязвимость" — таймерный бафф, переиспользует руну invuln, но со штрафом к урону.
+  function fireInvuln(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    activeBuffs.invuln = elapsedMs + cfg.duration;
+    invulnDmgPenaltyUntil = elapsedMs + cfg.duration;
+    invulnDmgPenalty = cfg.dmgPenalty || 0;
+    showToast('Неуязвимость');
+  }
+
+  // Волна не участвует в Arcade-физике: тело не вращается вместе со спрайтом, а прямоугольник
+  // 46x520 повёрнутый по диагонали давал совсем не тот хитбокс, что видно на экране. Вместо
+  // этого ведём волну вручную и проверяем попадание как честный повёрнутый прямоугольник
+  // (переводим врага в локальные координаты волны через обратный поворот).
+  let activeWaves = [];
+
+  function fireWave(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const angle = Math.random() * Math.PI * 2;
+    spawnWaveBolt(weaponId, cfg, angle, time);
+  }
+
+  // Драконья стрела: два огромных снаряда, вперёд и назад по направлению бега.
+  // Каждый пролетает НАСКВОЗЬ через всех, кого пересёк, и не гаснет о первого врага.
+  function fireDragon(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const a = facingAngle();
+    spawnWaveBolt(weaponId, cfg, a, time);
+    spawnWaveBolt(weaponId, cfg, a + Math.PI, time);
+  }
+  function spawnWaveBolt(weaponId, cfg, angle, time){
+    // Как Kunkka's Torrent: волна стартует за краем экрана позади игрока и летит сквозь
+    // него до противоположного края — визуально всегда пересекает весь видимый участок поля.
+    // fromPlayer — снаряд вылетает из самого игрока (Драконья стрела).
+    const cam = scene.cameras.main;
+    const half = Math.hypot(cam.width, cam.height) / 2 + 260;
+    const startX = cfg.fromPlayer ? player.x : player.x - Math.cos(angle) * half;
+    const startY = cfg.fromPlayer ? player.y : player.y - Math.sin(angle) * half;
+
+    const img = scene.add.image(startX, startY, cfg.tex || 'tex-wave');
+    img.setTint(WEAPONS[weaponId].color);
+    img.setRotation(angle);
+    img.setDepth(30);
+
+    activeWaves.push({
+      img,
+      angle,
+      vx: Math.cos(angle) * cfg.speed,
+      vy: Math.sin(angle) * cfg.speed,
+      dmg: cfg.dmg * dmgMult(),
+      color: WEAPONS[weaponId].color,
+      halfThickness: cfg.halfThickness || 24,   // вдоль полёта
+      halfLength: cfg.halfLength || 260,        // поперёк полёта
+      spawnedAt: time,
+      lifespan: ((cfg.fromPlayer ? half * 1.15 : half * 2.3) / cfg.speed) * 1000,
+      hitEnemies: new Set()
+    });
+  }
+
+  function updateWaves(time, delta){
+    for (let i = activeWaves.length - 1; i >= 0; i--){
+      const w = activeWaves[i];
+      w.img.x += w.vx * delta / 1000;
+      w.img.y += w.vy * delta / 1000;
+
+      const cosA = Math.cos(w.angle), sinA = Math.sin(w.angle);
+      const hits = [];
+      enemies.children.each((e) => {
+        if (!e.active || w.hitEnemies.has(e)) return;
+        const dx = e.x - w.img.x, dy = e.y - w.img.y;
+        // Проекция на оси волны: X — вдоль полёта (толщина "палки"), Y — поперёк (её длина).
+        const localX = dx * cosA + dy * sinA;
+        const localY = -dx * sinA + dy * cosA;
+        if (Math.abs(localX) <= w.halfThickness && Math.abs(localY) <= w.halfLength) hits.push(e);
+      });
+      hits.forEach((e) => { w.hitEnemies.add(e); damageEnemy(e, w.dmg, w.color); });
+
+      if (time - w.spawnedAt > w.lifespan){
+        w.img.destroy();
+        activeWaves.splice(i, 1);
+      }
+    }
+  }
+
+  // Кровь подчиняет СЛУЧАЙНЫХ врагов в видимой области, а не всегда ближайших —
+  // так армия расползается по полю, а не липнет к игроку.
+  function fireCharm(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const count = cfg.count || 1;
+    const cam = scene.cameras.main;
+    const viewRadius = Math.hypot(cam.width, cam.height) / 2;
+
+    const pool = [];
+    enemies.children.each((e) => {
+      if (!e.active || e.heavy || e.charmedUntil) return;
+      if ((e.tier === 'elite' || e.tier === 'enhanced') && !cfg.allowElite) return;
+      if (Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y) > viewRadius) return;
+      pool.push(e);
+    });
+
+    const already = countAllies();
+    const free = Math.max(0, count - already);
+    Phaser.Utils.Array.Shuffle(pool).slice(0, free).forEach((e) => {
+      e.charmedUntil = elapsedMs + cfg.duration * globalDurationMult;
+      e.charmDmg = cfg.dmg * dmgMult();
+      e.setTint(0xb02040);
+      if (cfg.boostedHp) e.hp = Math.round(e.hp * 2);
+    });
+  }
+
+  function fireSlowArea(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const hits = [];
+    enemies.children.each((e) => {
+      if (e.active && Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y) <= cfg.radius) hits.push(e);
+    });
+    hits.forEach((e) => {
+      e.slowUntil = elapsedMs + cfg.duration * globalDurationMult;
+      e.slowMult = cfg.slowMult;
+      if (cfg.dmg) damageEnemy(e, cfg.dmg * dmgMult(), WEAPONS[weaponId].color);
+    });
+    spawnPulseRing(player.x, player.y, cfg.radius, WEAPONS[weaponId].color);
+  }
+
+  // Огненная стрела: снаряд в ближайшего врага. Сам горящий след раскладывает
+  // spawnDirectionalProjectile — он общий для всех снарядов, у которых есть trailTicks.
+  function fireTrailShot(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const target = getNearestEnemies(1)[0];
+    if (!target) return;
+    spawnProjectile(weaponId, cfg, target, time);
+  }
+  function spawnFirePatch(x, y, dmg, tickMs){
+    const patch = scene.add.image(x, y, 'tex-ring').setTint(0xff7a3d).setAlpha(0.35).setScale(0.5).setDepth(-5);
+    const radius = 26;
+    const tick = () => {
+      if (!patch.active) return;
+      const hits = [];
+      enemies.children.each((e) => {
+        if (e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= radius) hits.push(e);
+      });
+      hits.forEach((e) => damageEnemy(e, dmg, 0xff7a3d));
+    };
+    tick();
+    const timer = scene.time.addEvent({ delay: tickMs, repeat: 6, callback: tick });
+    scene.time.delayedCall(tickMs * 7 + 200, () => { timer.remove(); patch.destroy(); });
+  }
+
+  // Общий проход по цепи — используется обычной молнией, "Гневом небес" (несколько цепей
+  // разом) и пассивным проком "Цепной реакции", чтобы не дублировать один и тот же код трижды.
+  function walkChain(start, cfg, color){
+    const hitSet = new Set();
+    let current = start;
+    let prevX = player.x, prevY = player.y;
+    const falloff = cfg.falloff || [1];
+    for (let i = 0; i < cfg.chainCount && current; i++){
+      const cx = current.x, cy = current.y;
+      hitSet.add(current);
+      const mult = falloff[Math.min(i, falloff.length - 1)];
+      damageEnemy(current, cfg.dmg * mult * dmgMult(), color);
+      spawnChainBolt(prevX, prevY, cx, cy, color);
+      prevX = cx; prevY = cy;
+      let next = null, best = Infinity;
+      enemies.children.each((o) => {
+        if (hitSet.has(o) || !o.active) return;
+        const d = Phaser.Math.Distance.Between(cx, cy, o.x, o.y);
+        if (d <= cfg.chainRadius && d < best){ best = d; next = o; }
+      });
+      current = next;
+    }
+  }
+
+  function nearestEnemyWithin(radius){
+    let best = null, bestD = radius;
+    enemies.children.each((e) => {
+      if (!e.active || e.charmedUntil) return;
+      const d = Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y);
+      if (d <= bestD){ bestD = d; best = e; }
+    });
+    return best;
+  }
+
+  function fireChain(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    // cfg.radius — «бьёт только тех, кто вошёл в радиус» (Громовая туча).
+    const first = cfg.radius ? nearestEnemyWithin(cfg.radius) : getNearestEnemies(1)[0];
+    if (!first) return;
+    walkChain(first, cfg, WEAPONS[weaponId].color);
+  }
+
+  function fireMultiChain(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const starters = getNearestEnemies(cfg.strikes || 5);
+    starters.forEach((s) => walkChain(s, cfg, WEAPONS[weaponId].color));
+  }
+
+  // "Цепная реакция" — не оружие само по себе, а пассивная эволюция молнии: любой ДРУГОЙ
+  // каст доп. бьёт цепью. Молния при этой эволюции исключена из обычного цикла стрельбы
+  // (см. update()), так что source никогда не будет 'lightning' — проверка ниже просто
+  // подстраховка на случай, если это изменится.
+  // Разряд смерти: цепь бьёт из точки, где враг только что умер. Глубина ограничена —
+  // иначе цепь, добившая соседа, порождает новую цепь, и так до переполнения стека.
+  let deathSparkDepth = 0;
+  function maybeDeathSpark(x, y){
+    if (evolved.lightning === undefined) return;
+    const evo = WEAPONS.lightning.evolutions[evolved.lightning];
+    if (!evo || evo.type !== 'deathspark') return;
+    if (deathSparkDepth >= 2) return;
+    const cfg = evo.level6;
+    let best = null, bestD = cfg.chainRadius;
+    enemies.children.each((e) => {
+      if (!e.active || e.charmedUntil) return;
+      const d = Phaser.Math.Distance.Between(x, y, e.x, e.y);
+      if (d <= bestD){ bestD = d; best = e; }
+    });
+    spawnBurst(x, y, WEAPONS.lightning.color, 5);
+    if (!best) return;
+    deathSparkDepth += 1;
+    spawnChainBolt(x, y, best.x, best.y, WEAPONS.lightning.color);
+    walkChain(best, cfg, WEAPONS.lightning.color);
+    deathSparkDepth -= 1;
+  }
+
+  function maybeChainReactionProc(sourceWeaponId){
+    if (sourceWeaponId === 'lightning') return;
+    if (evolved.lightning === undefined) return;
+    const evo = WEAPONS.lightning.evolutions[evolved.lightning];
+    if (!evo || evo.type !== 'reactionproc') return;
+    const first = getNearestEnemies(1)[0];
+    if (!first) return;
+    walkChain(first, evo.level6, WEAPONS.lightning.color);
+  }
+  function spawnChainBolt(x1, y1, x2, y2, color){
+    const g = scene.add.graphics().setDepth(45);
+    g.lineStyle(5, color, 0.5);
+    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.strokePath();
+    g.lineStyle(2, 0xffffff, 0.95);
+    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.strokePath();
+    scene.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+  }
+
+  // Ближайший НЕподчинённый враг в радиусе — по нему детонирует летящий снаряд.
+  // Союзников пропускаем: ракета не должна взрываться о собственную армию.
+  function firstEnemyNear(x, y, radius){
+    let found = null;
+    enemies.children.each((e) => {
+      if (found || !e.active || e.charmedUntil) return;
+      if (Phaser.Math.Distance.Between(x, y, e.x, e.y) <= radius) found = e;
+    });
+    return found;
+  }
+
+  // Снаряд летит и взрывается ПРИ КАСАНИИ врага, а если никого не задел — в конечной точке.
+  // Общий для обычного Взрыва и для ракет Иерихона (сам полёт урона не наносит).
+  const BLAST_CONTACT_RADIUS = 20;
+  function flyAndBlast(destX, destY, cfg, weaponId, scale){
+    const dist = Phaser.Math.Distance.Between(player.x, player.y, destX, destY);
+    const img = scene.add.image(player.x, player.y, cfg.projTex || 'tex-bolt').setTint(WEAPONS[weaponId].color).setDepth(42).setScale(scale);
+    img.setRotation(Phaser.Math.Angle.Between(player.x, player.y, destX, destY));
+    let done = false;
+    const boom = (x, y) => {
+      if (done) return;
+      done = true;
+      img.destroy();
+      triggerBlast(x, y, cfg, weaponId);
+    };
+    scene.tweens.add({
+      targets: img, x: destX, y: destY,
+      duration: Math.max(80, (dist / cfg.speed) * 1000),
+      // Твин не убиваем — он просто доиграет на уже уничтоженной картинке, а повторный
+      // взрыв не случится из-за флага done. Так проще, чем гасить твин из его же колбэка.
+      onUpdate: () => { if (!done && firstEnemyNear(img.x, img.y, BLAST_CONTACT_RADIUS)) boom(img.x, img.y); },
+      onComplete: () => boom(destX, destY)
+    });
+  }
+
+  function fireDelayedBlast(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const targets = getNearestEnemies(cfg.count || 1);
+    targets.forEach((target) => {
+      const angle = Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y);
+      const dist = Phaser.Math.Distance.Between(player.x, player.y, target.x, target.y);
+      flyAndBlast(player.x + Math.cos(angle) * dist, player.y + Math.sin(angle) * dist, cfg, weaponId, 1.4);
+    });
+  }
+  function triggerBlast(x, y, cfg, weaponId){
+    const color = WEAPONS[weaponId].color;
+    enemiesInRadius(x, y, cfg.radius).forEach((e) => damageEnemy(e, spellDamage(cfg, e), color));
+    spawnPulseRing(x, y, cfg.radius, color);
+  }
+
+  // Термоядерный взрыв: кнопка «очищаю всю карту». Рядовые, усиленные и элитные
+  // гибнут целиком; тяжёлые (мини-боссы и боссы) получают долю максимального здоровья,
+  // чтобы способность не решала бой с боссом в одиночку. Отсюда и огромная перезарядка.
+  function fireNukeGlobal(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = WEAPONS[weaponId].color;
+    const cam = scene.cameras.main;
+    cam.shake(600, 0.011);
+    cam.flash(320, 255, 236, 200);
+    const wave = scene.add.image(player.x, player.y, 'tex-ring').setTint(color).setAlpha(0.85).setScale(0.4).setDepth(48);
+    scene.tweens.add({ targets: wave, scale: Math.hypot(cam.width, cam.height) / 40, alpha: 0, duration: 620, onComplete: () => wave.destroy() });
+    enemies.children.each((e) => {
+      if (!e.active || e.charmedUntil) return;
+      if (e.heavy) damageEnemy(e, (e.maxHp || ENEMY_BASE_HP) * (cfg.pctHeavy || 0.3) * dmgMult(), color);
+      else damageEnemy(e, e.hp + 1, color);
+    });
+  }
+
+  function fireNovaSelf(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    triggerNuke(player.x, player.y, cfg, weaponId);
+    scene.cameras.main.shake(260, 0.006);
+  }
+
+  function fireNukeBlast(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const target = getNearestEnemies(1)[0];
+    const angle = target ? Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y) : Math.random() * Math.PI * 2;
+    const dist = target ? Phaser.Math.Distance.Between(player.x, player.y, target.x, target.y) : cfg.radius;
+    const destX = player.x + Math.cos(angle) * dist, destY = player.y + Math.sin(angle) * dist;
+    const travelMs = Math.max(120, (dist / cfg.speed) * 1000);
+
+    const img = scene.add.image(player.x, player.y, 'tex-bolt').setTint(WEAPONS[weaponId].color).setDepth(42).setScale(2.2);
+    scene.tweens.add({
+      targets: img, x: destX, y: destY, duration: travelMs,
+      onComplete: () => { img.destroy(); triggerNuke(destX, destY, cfg, weaponId); }
+    });
+  }
+  function triggerNuke(x, y, cfg, weaponId){
+    enemies.children.each((e) => {
+      if (!e.active) return;
+      const d = Phaser.Math.Distance.Between(x, y, e.x, e.y);
+      if (d > cfg.radius) return;
+      const p = d / cfg.radius;
+      const ringMult = p <= 0.25 ? 1 : p <= 0.5 ? 0.75 : p <= 0.75 ? 0.5 : 0.25;
+      damageEnemy(e, spellDamage(cfg, e) * ringMult, WEAPONS[weaponId].color);
+    });
+    spawnPulseRing(x, y, cfg.radius, WEAPONS[weaponId].color);
+  }
+
+  // Имплозия — снаряд без прямого удара; в точке взрыва затягивает врагов к центру
+  // (боссов не трогаем — выдёргивать босса через пол-экрана выглядело бы нелепо).
+  function firePull(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const target = getNearestEnemies(1)[0];
+    const angle = target ? Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y) : Math.random() * Math.PI * 2;
+    const dist = target ? Phaser.Math.Distance.Between(player.x, player.y, target.x, target.y) : cfg.radius;
+    const destX = player.x + Math.cos(angle) * dist, destY = player.y + Math.sin(angle) * dist;
+    const travelMs = Math.max(100, (dist / cfg.speed) * 1000);
+
+    const img = scene.add.image(player.x, player.y, 'tex-bolt').setTint(WEAPONS[weaponId].color).setDepth(42).setScale(1.2);
+    scene.tweens.add({
+      targets: img, x: destX, y: destY, duration: travelMs,
+      onComplete: () => { img.destroy(); triggerPull(destX, destY, cfg, weaponId); }
+    });
+  }
+  function triggerPull(x, y, cfg, weaponId){
+    enemies.children.each((e) => {
+      if (!e.active || e.heavy) return;
+      const d = Phaser.Math.Distance.Between(x, y, e.x, e.y);
+      if (d > cfg.radius || d < 1) return;
+      const angle = Phaser.Math.Angle.Between(e.x, e.y, x, y);
+      const pull = Math.min(d - 1, cfg.pull);
+      e.x += Math.cos(angle) * pull;
+      e.y += Math.sin(angle) * pull;
+      if (e.body) e.body.updateFromGameObject();
+      damageEnemy(e, spellDamage(cfg, e), WEAPONS[weaponId].color);
+    });
+    spawnPulseRing(x, y, cfg.radius, WEAPONS[weaponId].color);
+  }
+
+  // Иерихон — веер ракет вокруг игрока (не в одну цель), каждая взрывается обычным
+  // triggerBlast по прибытии.
+  function fireRocketVolley(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const count = cfg.count || 6;
+    // Не ровный веер одинаковых ракет, а залп по случайным целям вокруг игрока:
+    // если рядом никого — ракета всё равно уходит в случайную точку и взрывается там.
+    const reach = (cfg.range || 260) * 1.4;
+    const pool = [];
+    enemies.children.each((e) => {
+      if (e.active && !e.charmedUntil && Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y) <= reach) pool.push(e);
+    });
+    for (let i = 0; i < count; i++){
+      scene.time.delayedCall(i * 70, () => {
+        if (!running || paused) return;
+        let tx, ty;
+        const t = pool.length ? Phaser.Utils.Array.GetRandom(pool) : null;
+        if (t && t.active){
+          tx = t.x + (Math.random() - 0.5) * 40;
+          ty = t.y + (Math.random() - 0.5) * 40;
+        } else {
+          const a = Math.random() * Math.PI * 2;
+          const r = (cfg.range || 260) * (0.35 + Math.random() * 0.65);
+          tx = player.x + Math.cos(a) * r;
+          ty = player.y + Math.sin(a) * r;
+        }
+        flyAndBlast(tx, ty, cfg, weaponId, 1.6);
+      });
+    }
+  }
+
+  function spawnPulseRing(x, y, radius, color){
+    const ring = scene.add.image(x, y, 'tex-ring').setTint(color).setDepth(40);
+    const scale = radius / 50;
+    ring.setScale(scale * 0.4);
+    ring.setAlpha(0.9);
+    scene.tweens.add({
+      targets: ring,
+      scale: scale,
+      alpha: 0,
+      duration: 320,
+      onComplete: () => ring.destroy()
+    });
+  }
+
+  function spawnProjectile(weaponId, cfg, target, time){
+    const angle = Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y);
+    spawnDirectionalProjectile(weaponId, cfg, player.x, player.y, angle, time);
+  }
+
+  // Урон заклинания = плоский + доля от макс. HP цели (для Лавы/Металла/Монументов).
+  // Считается на цель, потому что процент зависит от конкретного врага.
+  function spellDamage(cfg, enemy){
+    const flat = cfg.dmg || 0;
+    const pct = cfg.pctMaxHp ? (enemy.maxHp || enemy.hp) * cfg.pctMaxHp : 0;
+    return (flat + pct) * dmgMult();
+  }
+
+  // byAlly — удар нанёс подчинённый (для Некроманта: только его добивания поднимают трупы).
+  function damageEnemy(enemy, dmg, burstColor, byAlly){
+    // Свои заклинания не бьют подчинённых — они союзники, а не мишени.
+    if (enemy.charmedUntil && !byAlly) return;
+    const isCrit = !byAlly && Math.random() < stats.critChance;
+    const finalDmg = (isCrit ? Math.round(dmg * stats.critMult) : dmg) * markAmpAt(enemy.x, enemy.y);
+    enemy.hp -= finalDmg;
+    spawnBurst(enemy.x, enemy.y, isCrit ? 0xffffff : burstColor, isCrit ? 8 : 5);
+    if (enemy.hp <= 0) killEnemy(enemy, byAlly);
+  }
+
+  function countAllies(){
+    let n = 0;
+    enemies.children.each((e) => { if (e.active && e.charmedUntil) n += 1; });
+    return n;
+  }
+
+  function killEnemy(enemy, byAlly){
+    const tier = ENEMY_TIERS[enemy.tier] || ENEMY_TIERS.normal;
+    const ex = enemy.x, ey = enemy.y;
+
+    // Некромант: враг, добитый подчинённым, встаёт на твою сторону вместо смерти.
+    if (byAlly && !enemy.heavy && charmCfgFlag('necromancer') && countAllies() < NECRO_MAX_ALLIES){
+      const cfg = currentCfg('charm');
+      enemy.hp = Math.max(1, Math.round((enemy.maxHp || ENEMY_BASE_HP) * 0.6));
+      enemy.charmedUntil = elapsedMs + cfg.duration * globalDurationMult;
+      enemy.charmDmg = cfg.dmg * dmgMult();
+      enemy.setTint(0x7a1030);
+      spawnBurst(ex, ey, 0xb02040, 8);
+      return;
+    }
+
+    enemy.destroy();
+    killCount += 1;
+    maybeDeathSpark(ex, ey);
+
+    // Мини-босс и босс дают долю от опыта, нужного до следующего уровня; остальные —
+    // кристалл своего размера. Опыт с арены собирается как обычно, по орбам.
+    if (tier.xpPct){
+      const reward = Math.max(xpNeeded(level) * tier.xpPct, tier.xpMin || 0);
+      spawnXpOrb(ex, ey, Math.round(reward * xpValueMult), 'large');
+    } else {
+      spawnXpOrb(ex, ey, Math.round(XP_ORBS[tier.orb].value * xpValueMult * xpScale()), tier.orb);
+    }
+    if (tier.dropsItem) spawnItemDrop(ex, ey);
+    if (Math.random() < (HP_ORB_CHANCE[enemy.tier] || 0)) spawnHpOrb(ex, ey);
+    bloodCharge += 1;
+    maybeSpawnClone();
+    if (enemy.arenaFoe && bossActive && arenaEnemiesLeft() === 0) endBossFight();
+    if (enemy.eventFoe && riftFight && eventFoesLeft() === 0) finishRiftFight();
+  }
+
+  // Флаг из текущей конфигурации Крови (нужен, чтобы не тащить cfg через весь стек урона).
+  function charmCfgFlag(flag){
+    if (!owned.charm) return false;
+    return !!currentCfg('charm')[flag];
+  }
+
+  // Урон союзнику от обычных врагов — идёт мимо damageEnemy, иначе сработала бы защита выше.
+  function damageAlly(ally, dmg){
+    ally.hp -= dmg;
+    spawnBurst(ally.x, ally.y, 0xe2495c, 4);
+    if (ally.hp <= 0){
+      ally.charmedUntil = null;
+      ally.destroy();
+    }
+  }
+
+  function spawnItemDrop(x, y){
+    const drop = itemDrops.create(x, y, 'tex-xp');
+    drop.setScale(1.8);
+    drop.setTint(0xffffff);
+  }
+
+  function onCollectItem(pl, drop){
+    drop.destroy();
+    openItemChoice();
+  }
+
+  // Предмет с элиты — тоже выбор из трёх (та же строка-список, что на левел-апе и у босса),
+  // просто из пула common: их можно брать повторно, поэтому список не сокращается со временем.
+  function openItemChoice(){
+    const picks = Phaser.Utils.Array.Shuffle(COMMON_LOOT_IDS.slice()).slice(0, Math.min(3, COMMON_LOOT_IDS.length));
+
+    pauseGame('item');
+
+    document.querySelector('#levelUpOverlay h1').textContent = 'Награда за разлом';
+    const container = document.getElementById('upgradeChoices');
+    container.innerHTML = '';
+    picks.forEach((id, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'upgrade-btn';
+      btn.innerHTML = choiceRowHtml(i + 1, LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name, LOOT[id].desc);
+      btn.onclick = () => chooseItem(id);
+      container.appendChild(btn);
+    });
+    window.__itemChoices = picks;
+    document.getElementById('levelUpOverlay').classList.add('show');
+  }
+
+  function chooseItem(id){
+    LOOT[id].apply();
+    lootCounts[id] = (lootCounts[id] || 0) + 1;
+    document.getElementById('levelUpOverlay').classList.remove('show');
+    resumeGame();
+  }
+
+  // Артефакт (редкость 'artifact') даёт только босс — уникальный выбор из трёх, эффект
+  // заметно весомее обычного предмета с элиты.
+  function openArtifactChoice(){
+    const available = ARTIFACT_LOOT_IDS.filter((id) => !lootCounts[id]);
+    if (!available.length){
+      grantXp(BOUNTY_XP_AMOUNT * 3);
+      return;
+    }
+    const picks = Phaser.Utils.Array.Shuffle(available.slice()).slice(0, 3);
+
+    pauseGame('artifact');
+
+    document.querySelector('#levelUpOverlay h1').textContent = 'Дар павшего стража';
+    const container = document.getElementById('upgradeChoices');
+    container.innerHTML = '';
+    picks.forEach((id, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'upgrade-btn';
+      btn.innerHTML = choiceRowHtml(i + 1, LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name, LOOT[id].desc);
+      btn.onclick = () => chooseArtifact(id);
+      container.appendChild(btn);
+    });
+    window.__artifactChoices = picks;
+    document.getElementById('levelUpOverlay').classList.add('show');
+  }
+
+  function chooseArtifact(id){
+    lootCounts[id] = 1;
+    LOOT[id].apply();
+    document.getElementById('levelUpOverlay').classList.remove('show');
+    resumeGame();
+  }
+
+  // Пока у врагов нет собственных усилений, снимать нечего — но точка входа уже есть,
+  // и Святая пуля вызывает именно её (§28.3). Как только у врагов появятся баффы,
+  // достаточно будет дописать их сброс здесь.
+  function dispelEnemy(enemy){
+    enemy.dispelledAt = elapsedMs;
+  }
+
+  function onBoltHitEnemy(bolt, enemy){
+    if (bolt.hitEnemies.has(enemy)) return;
+    bolt.hitEnemies.add(enemy);
+    if (bolt.dispel) dispelEnemy(enemy);
+
+    if (bolt.pierceLeft > 0){
+      bolt.pierceLeft -= 1;
+    } else {
+      bolt.destroy();
+    }
+
+    if (bolt.knockback && !enemy.heavy){
+      const angle = Phaser.Math.Angle.Between(player.x, player.y, enemy.x, enemy.y);
+      enemy.x += Math.cos(angle) * bolt.knockback;
+      enemy.y += Math.sin(angle) * bolt.knockback;
+      if (enemy.body) enemy.body.updateFromGameObject();
+    }
+
+    damageEnemy(enemy, bolt.dmg, bolt.color);
+  }
+
+  function onEnemyTouchPlayer(pl, enemy){
+    if (paused || !running) return;
+    if (elapsedMs < graceUntil) return;
+    if (enemy.charmedUntil) return;
+    const time = scene.time.now;
+    if (time - lastHitAt < (enemy.heavy ? BOSS_CONTACT_COOLDOWN : ENEMY_CONTACT_COOLDOWN)) return;
+    lastHitAt = time;
+    if (Math.random() < stats.evasion) return;
+    spawnBurst(pl.x, pl.y, 0xe2495c, 6);
+    if (buffActive('invuln')) return;
+
+    // Барьер гасит удар целиком; "Отражающий барьер" вдобавок отшвыривает нападающего.
+    if (shieldCharges > 0){
+      shieldCharges -= 1;
+      if (shieldRepel && !enemy.heavy){
+        const angle = Phaser.Math.Angle.Between(pl.x, pl.y, enemy.x, enemy.y);
+        enemy.x += Math.cos(angle) * shieldRepel;
+        enemy.y += Math.sin(angle) * shieldRepel;
+        if (enemy.body) enemy.body.updateFromGameObject();
+      }
+      spawnPulseRing(pl.x, pl.y, 60, 0x8fd6ff);
+      return;
+    }
+
+    playerHp = Math.max(0, playerHp - enemy.contactDamage);
+    maybeEmergencyHeal();
+    if (playerHp <= 0) doGameOver();
+  }
+
+  // "Фляга здоровья" — присутствие предмета в инвентаре включает эту способность целиком,
+  // без выбора уровня; может спасти от смертельного удара, если HP уже упало до 0 в этот же кадр.
+  function maybeEmergencyHeal(){
+    if (!lootCounts.potion) return;
+    if (playerHp > stats.maxHp * 0.25) return;
+    if (elapsedMs - lastEmergencyHealAt < 45000) return;
+    lastEmergencyHealAt = elapsedMs;
+    playerHp = Math.min(stats.maxHp, playerHp + stats.maxHp * 0.4);
+    showToast('Фляга здоровья!');
+  }
+
+  function spawnHpOrb(x, y){
+    const orb = hpOrbs.create(x, y, 'tex-hp');
+    scene.tweens.add({ targets: orb, scale: 1.25, yoyo: true, repeat: -1, duration: 520 });
+  }
+  function onCollectHpOrb(pl, orb){
+    orb.destroy();
+    const heal = stats.maxHp * HP_ORB_HEAL_PCT;
+    playerHp = Math.min(stats.maxHp, playerHp + heal);
+    spawnBurst(pl.x, pl.y, 0x63d97a, 8);
+    showToast('+' + Math.round(heal) + ' HP');
+  }
+
+  function spawnXpOrb(x, y, value, size){
+    const o = XP_ORBS[size || 'small'];
+    const orb = xpOrbs.create(x, y, 'tex-xp');
+    orb.setScale(o.scale).setTint(o.tint);
+    orb.value = value;
+  }
+
+  function onCollectOrb(pl, orb){
+    grantXp(orb.value);
+    orb.destroy();
+  }
+
+  function grantXp(amount){
+    xp += amount;
+    while (xp >= xpNeeded(level)){
+      xp -= xpNeeded(level);
+      level += 1;
+      pendingLevelUps += 1;
+    }
+    document.getElementById('levelBadge').textContent = String(level);
+    document.getElementById('xpFill').style.width = (Math.min(1, xp / xpNeeded(level)) * 100).toFixed(1) + '%';
+    if (pendingLevelUps > 0 && !paused) openLevelUp();
+  }
+
+  // Обычный левел-ап предлагает ТОЛЬКО новое оружие и прокачку открытого.
+  // Эволюции сюда не попадают никогда — они выдаются отдельным принудительным окном
+  // сразу после того, как заклинание достигло 5 уровня (см. chooseCandidate).
+  function collectCandidates(){
+    const news = ACTIVE_WEAPON_IDS.filter((id) => !owned[id]).map((id) => ({ id, kind: 'new' }));
+    const upgrades = ACTIVE_WEAPON_IDS.filter((id) => owned[id] && owned[id] < WEAPON_MAX_LEVEL).map((id) => ({ id, kind: 'upgrade' }));
+    // Второй этаж: качать эволюции можно только после третьей арены.
+    if (evoUpgradesUnlocked){
+      ACTIVE_WEAPON_IDS.forEach((id) => {
+        if (evolved[id] !== undefined && (evoLevel[id] || WEAPON_MAX_LEVEL) < EVO_MAX_LEVEL) upgrades.push({ id, kind: 'evo' });
+      });
+    }
+    return { news, upgrades };
+  }
+
+  function candidateKey(c){ return c.id + ':' + c.kind; }
+  
+
+  function buildChoices(n){
+    const { news, upgrades } = collectCandidates();
+    const ownedBucket = upgrades;
+    const used = new Set();
+    const result = [];
+    for (let i = 0; i < n; i++){
+      let pool = (ownedBucket.length && news.length) ? (Math.random() < 0.5 ? ownedBucket : news) : (ownedBucket.length ? ownedBucket : news);
+      pool = pool.filter((c) => !used.has(candidateKey(c)));
+      if (!pool.length) pool = ownedBucket.filter((c) => !used.has(candidateKey(c)));
+      if (!pool.length) pool = news.filter((c) => !used.has(candidateKey(c)));
+      if (!pool.length) break;
+      const pick = Phaser.Utils.Array.GetRandom(pool);
+      used.add(candidateKey(pick));
+      result.push(pick);
+    }
+    return result;
+  }
+
+  function evoName(id){ return WEAPONS[id].evolutions[evolved[id]].name; }
+  function candidateTitle(c){
+    if (c.kind === 'new') return WEAPONS[c.id].name + ' (новое)';
+    if (c.kind === 'evo') return evoName(c.id) + ' ур. ' + ((evoLevel[c.id] || WEAPON_MAX_LEVEL) + 1);
+    return WEAPONS[c.id].name + ' ур. ' + (owned[c.id] + 1);
+  }
+  function candidateDesc(c){
+    if (c.kind === 'new') return WEAPONS[c.id].levels[1].summary;
+    if (c.kind === 'evo') return '+' + Math.round(EVO_POWER_STEP * 100) + '% сила, −' + Math.round(EVO_COOLDOWN_STEP * 100) + '% перезарядка';
+    return describeUpgrade(c.id, owned[c.id] + 1);
+  }
+  function candidateColor(c){ return WEAPONS[c.id].color; }
+  function candidateLetter(c){ return WEAPONS[c.id].name.charAt(0); }
+
+  function openLevelUp(){
+    const choices = buildChoices(CHOICES_PER_LEVELUP);
+    // Предлагать нечего (всё открыто и прокачано) — гасим очередь и снимаем паузу,
+    // если попали сюда уже из открытого окна выбора.
+    if (!choices.length){ pendingLevelUps = 0; if (paused) resumeGame(); return; }
+
+    pauseGame('levelup');
+
+    document.querySelector('#levelUpOverlay h1').textContent = 'Пробуждение силы';
+    const container = document.getElementById('upgradeChoices');
+    container.innerHTML = '';
+    choices.forEach((c, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'upgrade-btn';
+      btn.innerHTML = choiceRowHtml(i + 1, candidateColor(c), candidateLetter(c), candidateTitle(c), candidateDesc(c));
+      btn.onclick = () => chooseCandidate(c);
+      const info = document.createElement('button');
+      info.className = 'info-btn';
+      info.textContent = '?';
+      info.onclick = (ev) => {
+        ev.stopPropagation();                       // «Подробнее» не должно выбирать способность
+        const shown = c.kind === 'new' ? WEAPONS[c.id].levels[1]
+                    : c.kind === 'evo' ? currentCfg(c.id)
+                    : WEAPONS[c.id].levels[owned[c.id] + 1];
+        openDetails(c.id, shown, candidateTitle(c),
+          c.kind === 'evo' ? WEAPONS[c.id].evolutions[evolved[c.id]].desc : (WEAPONS[c.id].levels[1].summary || ''));
+      };
+      btn.appendChild(info);
+      container.appendChild(btn);
+    });
+    window.__currentUpgradeChoices = choices;
+    document.getElementById('levelUpOverlay').classList.add('show');
+  }
+
+  function pickChoiceByIndex(i){
+    if (pauseReason === 'levelup'){
+      const pool = window.__currentUpgradeChoices;
+      if (pool && pool[i]) chooseCandidate(pool[i]);
+    } else if (pauseReason === 'evolution'){
+      const pool = window.__evolutionChoices;
+      if (pool && pool[i] !== undefined) chooseEvolution(pendingEvolutionFor, pool[i]);
+    } else if (pauseReason === 'artifact'){
+      const pool = window.__artifactChoices;
+      if (pool && pool[i]) chooseArtifact(pool[i]);
+    } else if (pauseReason === 'item'){
+      const pool = window.__itemChoices;
+      if (pool && pool[i]) chooseItem(pool[i]);
+    }
+  }
+
+  function chooseCandidate(c){
+    if (c.kind === 'new') owned[c.id] = 1;
+    else if (c.kind === 'upgrade') owned[c.id] += 1;
+    else if (c.kind === 'evo') evoLevel[c.id] = (evoLevel[c.id] || WEAPON_MAX_LEVEL) + 1;
+
+    pendingLevelUps -= 1;
+    document.getElementById('levelUpOverlay').classList.remove('show');
+
+    // Достигли 5 уровня — эволюция выдаётся сразу и принудительно, отдельным окном.
+    const evos = WEAPONS[c.id].evolutions;
+    if (owned[c.id] === WEAPON_MAX_LEVEL && evolved[c.id] === undefined && evos && evos.length){
+      openEvolutionChoice(c.id);
+      return;
+    }
+
+    if (pendingLevelUps > 0){
+      openLevelUp();
+    } else {
+      resumeGame();
+    }
+  }
+
+  // Отдельное окно эволюции: показывает ВСЕ доступные эволюции этого заклинания,
+  // игрок обязан выбрать одну — случайности тут нет.
+  function openEvolutionChoice(weaponId){
+    const evos = WEAPONS[weaponId].evolutions;
+    pendingEvolutionFor = weaponId;
+    pauseGame('evolution');
+
+    document.querySelector('#levelUpOverlay h1').textContent = WEAPONS[weaponId].name + ' — эволюция';
+    const container = document.getElementById('upgradeChoices');
+    container.innerHTML = '';
+    const indices = evos.map((_, i) => i);
+    indices.forEach((idx, i) => {
+      const evo = evos[idx];
+      const btn = document.createElement('button');
+      btn.className = 'upgrade-btn';
+      btn.innerHTML = choiceRowHtml(i + 1, WEAPONS[weaponId].color, evo.name.charAt(0), evo.name, evo.desc);
+      btn.onclick = () => chooseEvolution(weaponId, idx);
+      container.appendChild(btn);
+    });
+    window.__evolutionChoices = indices;
+    document.getElementById('levelUpOverlay').classList.add('show');
+  }
+
+  function chooseEvolution(weaponId, evoIndex){
+    evolved[weaponId] = evoIndex;
+    evoLevel[weaponId] = WEAPON_MAX_LEVEL;
+    const evo = WEAPONS[weaponId].evolutions[evoIndex];
+    if (typeof evo.onPick === 'function') evo.onPick();
+    pendingEvolutionFor = null;
+    document.getElementById('levelUpOverlay').classList.remove('show');
+    showToast(evo.name);
+
+    if (pendingLevelUps > 0){
+      openLevelUp();
+    } else {
+      resumeGame();
+    }
+  }
+
+  function toggleManualPause(){
+    if (document.getElementById('detailOverlay').classList.contains('show')){ closeDetails(); return; }
+    if (!running || (pauseReason && pauseReason !== 'manual')) return;
+    if (paused) closeManualPause(); else openManualPause();
+  }
+
+  function openManualPause(){
+    pauseGame('manual');
+    document.getElementById('pLevel').textContent = String(level);
+    document.getElementById('pTime').textContent = formatTime(runMs);
+    document.getElementById('pKills').textContent = String(killCount);
+    document.getElementById('pHp').textContent = Math.round(Math.max(0, playerHp)) + '/' + stats.maxHp;
+    document.getElementById('pSpeed').textContent = String(stats.moveSpeed);
+    document.getElementById('pWave').textContent = String(waveLevel + 1);
+    const skillsHtml = ACTIVE_WEAPON_IDS.filter((id) => owned[id]).map((id) => {
+      const label = evolved[id] !== undefined
+        ? WEAPONS[id].evolutions[evolved[id]].name + ' · ур. ' + (evoLevel[id] || WEAPON_MAX_LEVEL)
+        : ('ур. ' + owned[id]);
+      return staticRowHtml(WEAPONS[id].color, WEAPONS[id].name.charAt(0), WEAPONS[id].name, label);
+    }).join('');
+    document.getElementById('pSkills').innerHTML = skillsHtml || '<div class="empty-note">Пока ничего</div>';
+
+    const lootHtml = LOOT_IDS.filter((id) => lootCounts[id]).map((id) => {
+      const tag = LOOT[id].rarity === 'artifact' ? 'Артефакт' : ('x' + lootCounts[id]);
+      return staticRowHtml(LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name + ' · ' + tag, LOOT[id].desc);
+    }).join('');
+    document.getElementById('pLoot').innerHTML = lootHtml || '<div class="empty-note">Пока ничего</div>';
+
+    document.getElementById('pauseOverlay').classList.add('show');
+  }
+
+  function closeManualPause(){
+    resumeGame();
+    document.getElementById('pauseOverlay').classList.remove('show');
+  }
+
+  // Разлом появляется далеко и сам о себе сообщает стрелкой у края экрана: иначе
+  // «найди объект где-то на бесконечной карте» превращается в лотерею.
+  function spawnRiftEvent(){
+    const a = Math.random() * Math.PI * 2;
+    const r = Phaser.Math.Between(RIFT_DIST_MIN, RIFT_DIST_MAX);
+    riftNode = riftNodes.create(player.x + Math.cos(a) * r, player.y + Math.sin(a) * r, 'tex-riftnode');
+    riftNode.setDepth(-2);
+    scene.tweens.add({ targets: riftNode, scale: 1.35, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
+    const ring = scene.add.image(riftNode.x, riftNode.y, 'tex-ring').setTint(0xb06bff).setAlpha(0.5).setScale(1.1).setDepth(-3);
+    scene.tweens.add({ targets: ring, scale: 2.2, alpha: 0, repeat: -1, duration: 1400 });
+    riftNode.ring = ring;
+    riftMarker = scene.add.image(0, 0, 'tex-arrow').setScrollFactor(0).setDepth(60).setAlpha(0.9);
+    showToast('Разлом открылся — найди его');
+  }
+
+  function updateRiftMarker(){
+    if (!riftMarker) return;
+    if (!riftNode || !riftNode.active){ riftMarker.destroy(); riftMarker = null; return; }
+    const cam = scene.cameras.main;
+    const sx = riftNode.x - cam.scrollX, sy = riftNode.y - cam.scrollY;
+    const inside = sx > 30 && sx < cam.width - 30 && sy > 30 && sy < cam.height - 30;
+    riftMarker.setVisible(!inside);
+    if (inside) return;
+    const cx = cam.width / 2, cy = cam.height / 2;
+    const ang = Math.atan2(sy - cy, sx - cx);
+    const m = Math.min(cx, cy) - 46;
+    riftMarker.setPosition(cx + Math.cos(ang) * m, cy + Math.sin(ang) * m);
+    riftMarker.setRotation(ang);
+  }
+
+  function onEnterRift(pl, node){
+    if (node.ring) node.ring.destroy();
+    node.destroy();
+    riftNode = null;
+    riftFight = true;
+    const n = Phaser.Math.Between(RIFT_ELITES_MIN, RIFT_ELITES_MAX);
+    for (let i = 0; i < n; i++){
+      const a = (Math.PI * 2 / n) * i + Math.random() * 0.3;
+      const e = spawnEnemy('elite', pl.x + Math.cos(a) * (170 + Math.random() * 120), pl.y + Math.sin(a) * (170 + Math.random() * 120));
+      e.eventFoe = true;
+    }
+    scene.cameras.main.shake(300, 0.005);
+    showToast('Из разлома лезут элитные твари');
+    document.getElementById('hint').textContent = 'Перебей всех, кто вышел из разлома — за это дадут предмет.';
+  }
+
+  function eventFoesLeft(){
+    let n = 0;
+    enemies.children.each((e) => { if (e.active && e.eventFoe && !e.charmedUntil) n += 1; });
+    return n;
+  }
+
+  function finishRiftFight(){
+    riftFight = false;
+    document.getElementById('hint').textContent = HINT_DEFAULT;
+    showToast('Разлом закрыт');
+    openItemChoice();
+  }
+
+  function maybeSpawnRune(delta){
+    runeTimer += delta;
+    if (runeTimer < nextRuneIn) return;
+    runeTimer = 0;
+    nextRuneIn = Phaser.Math.Between(RUNE_SPAWN_MIN_MS, RUNE_SPAWN_MAX_MS);
+
+    const id = Phaser.Utils.Array.GetRandom(RUNE_IDS);
+    const p = ringPos(280 + Math.random() * 280);
+    const r = runes.create(p.x, p.y, 'tex-rune');
+    r.setTint(RUNES[id].color);
+    r.runeId = id;
+    scene.time.delayedCall(RUNE_LIFETIME_MS, () => { if (r.active) r.destroy(); });
+  }
+
+  function onCollectRune(pl, r){
+    const id = r.runeId;
+    r.destroy();
+    activateRune(id);
+  }
+
+  function activateRune(id){
+    const cfg = RUNES[id];
+    if (id === 'magnet'){
+      // Раньше опыт просто исчезал и начислялся — эффект был незаметен. Теперь каждый
+      // кристалл действительно летит к игроку, в том числе с другого конца карты.
+      xpOrbs.getChildren().slice().forEach((o) => {
+        const dist = Phaser.Math.Distance.Between(o.x, o.y, player.x, player.y);
+        const value = o.value;
+        o.body.enable = false;
+        scene.tweens.add({
+          targets: o, x: player.x, y: player.y, scale: 0.4,
+          duration: Math.min(900, 140 + dist * 0.45), ease: 'Quad.easeIn',
+          onComplete: () => { if (o.active){ o.destroy(); grantXp(value); spawnBurst(player.x, player.y, 0xd9b35c, 2); } }
+        });
+      });
+      spawnPulseRing(player.x, player.y, 260, 0x55d6c2);
+    } else if (id === 'bounty'){
+      grantXp(BOUNTY_XP_AMOUNT);
+    } else {
+      activeBuffs[id] = elapsedMs + cfg.duration;
+    }
+    showToast(cfg.name);
+  }
+
+  function showToast(text){
+    const t = document.getElementById('toast');
+    t.textContent = text;
+    t.classList.add('show');
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function renderBuffs(){
+    const html = RUNE_IDS.filter((id) => !RUNES[id].instant && buffActive(id)).map((id) => {
+      const remain = Math.ceil((activeBuffs[id] - elapsedMs) / 1000);
+      return '<div class="buff-chip">' + RUNES[id].name + ' ' + remain + 'с</div>';
+    }).join('');
+    document.getElementById('buffs').innerHTML = html;
+  }
+
+  // Сколько врагов ещё держат арену закрытой. Подчинённых не считаем: пока Кровь
+  // держит врага под контролем, он не может быть условием выхода — иначе арена
+  // рискует не закрыться никогда.
+  // Выход держит СОСТАВ СОБЫТИЯ (боссы + подкрепление), а не вся толпа, которую барьер
+  // накрыл случайно: чем плотнее карта, тем больше врагов внутри окажется, и «убей вообще
+  // всех» превращает позднюю арену в неубиваемую стену. Старые враги никуда не деваются
+  // и продолжают бить — они просто не условие выхода (§34 оставляет это на усмотрение).
+  function arenaEnemiesLeft(){
+    let n = 0;
+    enemies.children.each((e) => { if (e.active && e.arenaFoe && !e.charmedUntil) n += 1; });
+    return n;
+  }
+
+  function spawnArenaReinforcement(tier, fromAngle){
+    const a = fromAngle + (Math.random() - 0.5) * ARENA_REINFORCE_ARC;
+    const r = BOSS_RADIUS * (0.55 + Math.random() * 0.4);
+    const e = spawnEnemy(tier, bossCenter.x + Math.cos(a) * r, bossCenter.y + Math.sin(a) * r);
+    e.inArena = true;
+    e.arenaFoe = true;
+    return e;
+  }
+
+  function triggerBoss(){
+    bossActive = true;
+    // Центр арены смещён вперёд по бегу: игрок оказывается у ближней кромки, а не
+    // в середине. Тогда «вошёл с запада — угроза с востока» работает буквально:
+    // боссы и подкрепление разворачиваются на противоположной от игрока стороне,
+    // и у него есть куда маневрировать.
+    const fa = facingAngle();
+    bossCenter = { x: player.x + Math.cos(fa) * BOSS_RADIUS * 0.45, y: player.y + Math.sin(fa) * BOSS_RADIUS * 0.45 };
+
+    // Врагов, оказавшихся внутри барьера, НЕ удаляем: игрок заперт вместе с ними и
+    // должен разобраться со всеми. Удаляем только оставшихся снаружи — до них уже
+    // не дотянуться ни ему, ни им.
+    enemies.children.each((e) => {
+      if (Phaser.Math.Distance.Between(bossCenter.x, bossCenter.y, e.x, e.y) > BOSS_RADIUS) e.destroy();
+      else e.inArena = true;
+    });
+
+    // Подкрепление приходит с дальней от игрока стороны арены.
+    const entryAngle = Math.atan2(bossCenter.y - player.y, bossCenter.x - player.x);
+
+    const bossCount = Phaser.Math.Between(ARENA_BOSS_MIN, ARENA_BOSS_MAX);
+    arenaBosses = [];
+    for (let i = 0; i < bossCount; i++){
+      const a = (Math.PI * 2 / bossCount) * i + Math.random() * 0.5;
+      const r = 40 + Math.random() * 80;
+      // На третьей арене место одного из боссов занимает Древний страж.
+      const tier = (waveLevel === EVO_UNLOCK_WAVE - 1 && i === 0) ? 'elder' : 'boss';
+      const b = spawnEnemy(tier, bossCenter.x + Math.cos(a) * r, bossCenter.y + Math.sin(a) * r);
+      b.inArena = true;
+      b.arenaFoe = true;
+      arenaBosses.push(b);
+    }
+    const enhCount = ARENA_ENHANCED + ARENA_ENHANCED_STEP * waveLevel;
+    const normCount = ARENA_NORMAL + ARENA_NORMAL_STEP * waveLevel;
+    for (let i = 0; i < enhCount; i++) spawnArenaReinforcement('enhanced', entryAngle);
+    for (let i = 0; i < normCount; i++) spawnArenaReinforcement('normal', entryAngle);
+
+    barrierGfx.clear();
+    barrierGfx.lineStyle(4, 0x8a4fd9, 0.85);
+    barrierGfx.strokeCircle(bossCenter.x, bossCenter.y, BOSS_RADIUS);
+    barrierGfx.fillStyle(0x8a4fd9, 0.05);
+    barrierGfx.fillCircle(bossCenter.x, bossCenter.y, BOSS_RADIUS);
+
+    graceUntil = elapsedMs + CHOICE_GRACE_MS;   // барьер захлопывается вплотную к игроку
+    document.getElementById('bossWrap').classList.add('show');
+    document.getElementById('hint').textContent = 'Барьер закрыт: перебей всех внутри, включая стражей. Пока арена не зачищена, время забега стоит.';
+    scene.cameras.main.shake(320, 0.006);
+  }
+
+  function endBossFight(){
+    bossActive = false;
+    arenaBosses = [];
+    barrierGfx.clear();
+    document.getElementById('bossWrap').classList.remove('show');
+    document.getElementById('hint').textContent = HINT_DEFAULT;
+    spawnTimer = 0;
+    // §35: зачищенная арена = новая волна. Сильнее становится ВЕСЬ мир, а не только
+    // будущие боссы — иначе после пары эволюций игра превращается в прогулку.
+    waveLevel += 1;
+    showToast('Волна ' + (waveLevel + 1) + ': мир стал опаснее');
+    if (!evoUpgradesUnlocked && waveLevel >= EVO_UNLOCK_WAVE){
+      evoUpgradesUnlocked = true;
+      scene.time.delayedCall(1200, () => showToast('Эволюции теперь растут до 10 уровня'));
+    }
+    openArtifactChoice();
+  }
+
+  function spawnBurst(x, y, color, count){
+    for (let i = 0; i < count; i++){
+      const s = scene.add.image(x, y, 'tex-spark');
+      s.setTint(color);
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 18 + Math.random() * 22;
+      scene.tweens.add({
+        targets: s,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist,
+        alpha: 0,
+        scale: 0.3,
+        duration: 260 + Math.random() * 120,
+        onComplete: () => s.destroy()
+      });
+    }
+  }
+
+  function drawPlayerHpBar(){
+    hpBarGfx.clear();
+    const w = 44, h = 6;
+    // hpBarGfx имеет scrollFactor(0): координаты ниже уже в системе экрана. Округляем
+    // ИМЕННО (player - scroll), то есть ту же величину, что рендерер использует для
+    // спрайта игрока — раньше округляли одно player.x в мировых координатах, а спрайт
+    // выравнивался по-другому, отсюда рассинхрон и "плавающий" бар.
+    const cam = scene.cameras.main;
+    const sx = Math.round(player.x - cam.scrollX);
+    const sy = Math.round(player.y - cam.scrollY);
+    const x = sx - w / 2, y = sy - 30;
+    const pct = Math.max(0, playerHp / stats.maxHp);
+    hpBarGfx.fillStyle(0x14182a, 0.9);
+    hpBarGfx.fillRect(x, y, w, h);
+    hpBarGfx.fillStyle(pct < 0.3 ? 0xe2495c : 0x55d6c2, 1);
+    hpBarGfx.fillRect(x, y, w * pct, h);
+    hpBarGfx.lineStyle(1, 0x2a2f45, 1);
+    hpBarGfx.strokeRect(x, y, w, h);
+  }
+
+  function formatTime(ms){
+    const total = Math.floor(ms / 1000);
+    const m = Math.floor(total / 60).toString().padStart(2, '0');
+    const s = (total % 60).toString().padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  function doGameOver(){
+    running = false;
+    player.setVelocity(0, 0);
+    document.getElementById('finalTime').textContent = formatTime(runMs);
+    document.getElementById('finalKills').textContent = String(killCount);
+    document.getElementById('finalLevel').textContent = String(level);
+    document.getElementById('deathOverlay').classList.add('show');
+  }
+
+  function update(time, delta){
+    const cam = this.cameras.main;
+    gridLayer.tilePositionX = cam.scrollX;
+    gridLayer.tilePositionY = cam.scrollY;
+
+    drawPlayerHpBar();
+    updateAttached();
+
+    if (!running || paused) return;
+
+    elapsedMs += delta;
+    if (!bossActive) runMs += delta;
+    document.getElementById('timer').textContent = formatTime(runMs);
+
+    if (!bossActive && !riftFight && !riftNode && runMs >= nextRiftAt){
+      nextRiftAt = runMs + RIFT_INTERVAL_MS;
+      spawnRiftEvent();
+    }
+    updateRiftMarker();
+
+    if (!bossActive && runMs >= nextBossAt){
+      nextBossAt += BOSS_INTERVAL_MS;
+      triggerBoss();
+    }
+    if (bossActive){
+      const maxHp = arenaBosses.reduce((sum, b) => sum + (b.maxHp || 0), 0) || 1;
+      const hp = arenaBosses.reduce((sum, b) => sum + (b.active ? Math.max(0, b.hp) : 0), 0);
+      document.getElementById('bossHpFill').style.width = ((hp / maxHp) * 100).toFixed(1) + '%';
+      document.getElementById('bossCount').textContent = arenaEnemiesLeft();
+    }
+
+    const left = cursors.left.isDown || wasd.left.isDown;
+    const right = cursors.right.isDown || wasd.right.isDown;
+    const up = cursors.up.isDown || wasd.up.isDown;
+    const down = cursors.down.isDown || wasd.down.isDown;
+
+    let vx = (right ? 1 : 0) - (left ? 1 : 0);
+    let vy = (down ? 1 : 0) - (up ? 1 : 0);
+    if (stick.active){ vx = stick.dx; vy = stick.dy; }
+    const len = Math.hypot(vx, vy);
+    if (len > 0){
+      // За STICK_FULL_AT наклона стик уже даёт полную скорость: недожатый палец не должен
+      // превращаться в «враги быстрее меня». Ближе к центру остаётся точная подстройка.
+      const pull = Math.min(1, len / STICK_FULL_AT) * stats.moveSpeed;
+      vx = (vx / len) * pull;
+      vy = (vy / len) * pull;
+    }
+
+    player.setVelocity(vx, vy);
+    if (vx || vy){
+      const fl = Math.hypot(vx, vy);
+      facing.x = vx / fl;
+      facing.y = vy / fl;
+    }
+
+    if (bossActive){
+      // Жёсткий клэмп позиции (не гашение скорости) — иначе борьба с drag/damping игрока
+      // давала дрожь прямо на кромке барьера. updateFromGameObject() пересинхронизирует
+      // физическое тело, чтобы клэмп не откатывался на следующем шаге.
+      const dx = player.x - bossCenter.x, dy = player.y - bossCenter.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > BOSS_RADIUS){
+        const scale = BOSS_RADIUS / dist;
+        player.x = bossCenter.x + dx * scale;
+        player.y = bossCenter.y + dy * scale;
+        player.body.updateFromGameObject();
+      }
+    }
+
+    const timeStopped = buffActive('timestop');
+    enemies.children.each((e) => {
+      if (!e.active) return;
+      if (timeStopped){ e.setVelocity(0, 0); return; }
+
+      if (e.charmedUntil){
+        if (elapsedMs >= e.charmedUntil){
+          e.charmedUntil = null;
+          e.clearTint();
+        } else {
+          let target = null, best = Infinity;
+          let attackers = 0, attackerDmg = 0;
+          enemies.children.each((o) => {
+            if (o === e || !o.active) return;
+            const d = Phaser.Math.Distance.Between(e.x, e.y, o.x, o.y);
+            if (o.charmedUntil) return;
+            if (d < best){ best = d; target = o; }
+            // Обычные враги вплотную бьют подчинённого — армия не бессмертна.
+            if (d < ENEMY_STOP_DIST + 6){ attackers += 1; attackerDmg = Math.max(attackerDmg, o.contactDamage || 0); }
+          });
+
+          if (attackers && (!e.lastHurtAt || time - e.lastHurtAt > 700)){
+            e.lastHurtAt = time;
+            damageAlly(e, attackerDmg);
+            if (!e.active) return;
+          }
+
+          if (!target){
+            e.setVelocity(0, 0);
+          } else {
+            const d = Phaser.Math.Distance.Between(e.x, e.y, target.x, target.y);
+            if (d < ENEMY_STOP_DIST){
+              e.setVelocity(0, 0);
+              if (!e.lastCharmHitAt || time - e.lastCharmHitAt > 600){
+                e.lastCharmHitAt = time;
+                damageEnemy(target, e.charmDmg, 0xb02040, true);
+              }
+            } else {
+              const angle = Phaser.Math.Angle.Between(e.x, e.y, target.x, target.y);
+              const asp = (e.baseSpeed || ENEMY_SPEED) * enemySpeedMult();
+              e.setVelocity(Math.cos(angle) * asp, Math.sin(angle) * asp);
+            }
+          }
+          return;
+        }
+      }
+
+      const slowed = e.slowUntil && elapsedMs < e.slowUntil;
+      const baseSpd = (e.baseSpeed || ENEMY_SPEED) * enemySpeedMult();
+      const spd = slowed ? baseSpd * e.slowMult : baseSpd;
+      const d = Phaser.Math.Distance.Between(e.x, e.y, player.x, player.y);
+      if (d < ENEMY_STOP_DIST){
+        // Вплотную к игроку угол до цели скачет от мелких смещений — отсюда была
+        // видимая дрожь босса и толпы прямо у персонажа. Просто останавливаем.
+        e.setVelocity(0, 0);
+      } else {
+        const angle = Phaser.Math.Angle.Between(e.x, e.y, player.x, player.y);
+        e.setVelocity(Math.cos(angle) * spd, Math.sin(angle) * spd);
+      }
+
+      if (e.tier === 'normal' && !e.inArena){
+        const dd = Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y);
+        if (dd > ENEMY_LEASH_RADIUS) recycleEnemy(e);
+      }
+    });
+
+    [xpOrbs, hpOrbs].forEach((group) => {
+      group.children.each((orb) => {
+        const d = Phaser.Math.Distance.Between(player.x, player.y, orb.x, orb.y);
+        if (d < stats.pickupRadius){
+          const angle = Phaser.Math.Angle.Between(orb.x, orb.y, player.x, player.y);
+          scene.physics.velocityFromRotation(angle, XP_MAGNET_SPEED, orb.body.velocity);
+        } else {
+          orb.setVelocity(0, 0);
+        }
+      });
+    });
+
+    bolts.children.each((b) => {
+      if (!b.active) return;
+      if (time - b.spawnedAt > b.lifespan) b.destroy();
+    });
+
+    ACTIVE_WEAPON_IDS.forEach((id) => {
+      if (!owned[id]) return;
+      const cfg = currentCfg(id);
+      // Эволюция может поменять не только цифры, но и сам тип поведения (например,
+      // "Цунами" превращает направленную волну в круговой взрыв с отбрасыванием).
+      const evo = evolved[id] !== undefined ? WEAPONS[id].evolutions[evolved[id]] : null;
+      const type = (evo && evo.type) || WEAPONS[id].type;
+      // "Цепная реакция" — чисто пассивный проk от ДРУГИХ кастов, у неё нет своего таймера.
+      // Чисто пассивные эволюции (проки от других кастов, постоянные бонусы) не стреляют сами.
+      // Дрожь висит на пройденном расстоянии, Ядро крутится само — своего таймера у них нет.
+      if (type === 'reactionproc' || type === 'passive' || type === 'tremor' || type === 'core' || type === 'deathspark') return;
+      // Предметы режут перезарядку, но не ниже времени жизни эффекта: иначе новая
+      // копия долгой области появляется поверх недогоревшей старой. Если базовый откат
+      // и так короче длительности — это осознанная механика (Лава), её не трогаем.
+      let cd = cfg.cooldown * globalCooldownMult;
+      if (cfg.duration) cd = Math.max(cd, Math.min(cfg.cooldown, cfg.duration));
+      if (time - (lastFiredAt[id] || 0) > cd){
+        lastFiredAt[id] = time;
+        if (type === 'area') fireArea(id, time);
+        else if (type === 'wave') fireWave(id, time);
+        else if (type === 'dragon') fireDragon(id, time);
+        else if (type === 'charm') fireCharm(id, time);
+        else if (type === 'slowarea') fireSlowArea(id, time);
+        else if (type === 'multiburst') fireMultiBurst(id, time);
+        else if (type === 'volley') fireVolley(id, time);
+        else if (type === 'radialvolley') fireRadialVolley(id, time);
+        else if (type === 'zone') fireZone(id, time);
+        else if (type === 'aura') fireAura(id, time);
+        else if (type === 'geyser') fireGeyser(id, time);
+        else if (type === 'markzone') fireMarkZone(id, time);
+        else if (type === 'rift') fireRift(id, time);
+        else if (type === 'meteors') fireMeteors(id, time);
+        else if (type === 'wall') fireWall(id, time);
+        else if (type === 'saw') fireSaw(id, time);
+        else if (type === 'slash') fireSlash(id, time);
+        else if (type === 'forwardvolley') fireForwardVolley(id, time);
+        else if (type === 'trailshot') fireTrailShot(id, time);
+        else if (type === 'chain') fireChain(id, time);
+        else if (type === 'multichain') fireMultiChain(id, time);
+        else if (type === 'delayedblast') fireDelayedBlast(id, time);
+        else if (type === 'novablast') fireNukeBlast(id, time);
+        else if (type === 'novaself') fireNovaSelf(id, time);
+        else if (type === 'nukeglobal') fireNukeGlobal(id, time);
+        else if (type === 'monuments') fireMonuments(id, time);
+        else if (type === 'pull') firePull(id, time);
+        else if (type === 'volleyburst') fireRocketVolley(id, time);
+        else if (type === 'barrier') fireBarrier(id, time);
+        else if (type === 'invuln') fireInvuln(id, time);
+        maybeChainReactionProc(id);
+      }
+    });
+
+    if (!bossActive){
+      spawnTimer += delta;
+      if (spawnTimer >= nextSpawnIn){
+        spawnTimer = 0;
+        spawnOrRecycle();
+        nextSpawnIn = spawnIntervalMs();
+      }
+    }
+
+    updateWaves(time, delta);
+    updateAuras();
+    updateMarkZones();
+    updateMonuments();
+    updateBossSlams();
+    updateTremor();
+    updateLavaCore(delta);
+    updateWalls();
+    updateSaws(delta);
+    updateSlashes(delta);
+    updateClones(time);
+    maybeSpawnRune(delta);
+    renderBuffs();
+  }
+
+  // --- Мобильное управление ------------------------------------------------
+  // Плавающий стик: палец касается любого места экрана — стик появляется прямо там
+  // (как в Magic Survival), а не в фиксированном углу, куда надо целиться вслепую.
+  // ponytail: один палец = один стик, multi-touch не нужен — других жестов в игре нет.
+  const STICK_R = 58, STICK_DEAD = 6, STICK_FULL_AT = 0.45;
+  const stick = { active: false, id: null, x: 0, y: 0, dx: 0, dy: 0 };
+  const stickZone = document.getElementById('stickZone');
+  const stickEl = document.getElementById('stick');
+  const knobEl = document.getElementById('stickKnob');
+
+  function stickMoveTo(px, py){
+    let dx = px - stick.x, dy = py - stick.y;
+    const d = Math.hypot(dx, dy);
+    if (d > STICK_R){ dx = dx / d * STICK_R; dy = dy / d * STICK_R; }
+    knobEl.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+    const on = d > STICK_DEAD;
+    stick.dx = on ? dx / STICK_R : 0;
+    stick.dy = on ? dy / STICK_R : 0;
+  }
+  function releaseStick(){
+    if (!stick.active) return;
+    stick.active = false; stick.id = null; stick.dx = 0; stick.dy = 0;
+    stickEl.classList.remove('show');
+    knobEl.style.transform = 'translate(0,0)';
+  }
+  stickZone.addEventListener('pointerdown', (e) => {
+    if (stick.active) return;
+    stick.active = true;
+    stick.id = e.pointerId;
+    stick.x = e.clientX;
+    stick.y = e.clientY;
+    stickEl.style.left = stick.x + 'px';
+    stickEl.style.top = stick.y + 'px';
+    stickEl.classList.add('show');
+    stickMoveTo(e.clientX, e.clientY);
+    stickZone.setPointerCapture(e.pointerId);
+  });
+  stickZone.addEventListener('pointermove', (e) => {
+    if (stick.active && e.pointerId === stick.id) stickMoveTo(e.clientX, e.clientY);
+  });
+  const endStick = (e) => { if (e.pointerId === stick.id) releaseStick(); };
+  stickZone.addEventListener('pointerup', endStick);
+  stickZone.addEventListener('pointercancel', endStick);
+
+  // На телефоне нет ESC и R: пауза — кнопкой, снятие паузы и рестарт — тапом по оверлею.
+  document.getElementById('btnPause').onclick = toggleManualPause;
+  document.getElementById('pauseOverlay').onclick = () => { if (pauseReason === 'manual') closeManualPause(); };
+  document.getElementById('deathOverlay').onclick = () => { if (!running) scene.scene.restart(); };
+  document.getElementById('detailOverlay').onclick = closeDetails;
+  document.getElementById('hint').textContent = HINT_DEFAULT;
+
+  const config = {
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: window.innerWidth,
+    height: window.innerHeight,
+    backgroundColor: '#0c0e16',
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+    scene: { preload, create, update },
+    render: { roundPixels: true }
+  };
+
+  const game = new Phaser.Game(config);
+
+  // Полный экран есть не везде (Safari на iPhone его для страниц не даёт, во вложенном
+  // фрейме он тоже может быть запрещён) — кнопка лежит скрытой и показывается, только если
+  // браузер реально умеет. Спрашиваем сам документ, а не game.scale: ScaleManager на этот
+  // момент ещё не догрузился, и game.scale.fullscreen тут undefined.
+  const btnFull = document.getElementById('btnFull');
+  if (document.fullscreenEnabled || document.webkitFullscreenEnabled){
+    btnFull.hidden = false;
+    btnFull.onclick = () => game.scale.toggleFullscreen();
+  }
+  window.addEventListener('resize', () => {
+    game.scale.resize(window.innerWidth, window.innerHeight);
+  });
+})();
+</script>
