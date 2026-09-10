@@ -782,7 +782,7 @@
         { dmg: 140, count: 2, cooldown: 700, radius: 118, speed: 620 }
       ],
       evolutions: [
-        { name: 'Термоядерный взрыв', desc: 'Вспышка стирает с карты всех обычных, усиленных и элитных; боссам сносит треть здоровья', type: 'nukeglobal', level6: { pctHeavy: 0.35, cooldown: 32000 } },
+        { name: 'Термоядерный взрыв', desc: 'Вспышка стирает с карты всех обычных, усиленных и элитных; боссам сносит треть здоровья', type: 'nukeglobal', level6: { pctHeavy: 0.35, cooldown: 40000 } },
         { name: 'Имплозия', desc: 'Слабый урон, но мощно стягивает врагов в одну точку', type: 'pull', level6: { dmg: 40, radius: 240, pull: 200, speed: 560, cooldown: 3800 } },
         { name: 'Иерихон', desc: '10 ракет уходят по случайным целям вокруг тебя и рвутся при попадании', type: 'volleyburst', level6: { dmg: 155, radius: 125, range: 280, speed: 600, cooldown: 3400, count: 10, projTex: 'tex-rocket' } }
       ]
@@ -952,9 +952,9 @@
   // (9-я минута). До этого эволюция существует, но выше 5 не растёт.
   const EVO_MAX_LEVEL = 10;
   const EVO_UNLOCK_WAVE = 3;
-  const EVO_POWER_STEP = 0.18;      // +18% к силовым числам за уровень
-  const EVO_COOLDOWN_STEP = 0.04;   // -4% к откату за уровень
-  const EVO_SCALE_FIELDS = ['dmg', 'pctMaxHp', 'pctHeavy', 'radius', 'absorb', 'perEnemy', 'cloneDmg', 'hp'];
+  const EVO_POWER_STEP = 0.12;      // +12% к силовым числам за уровень
+  const EVO_COOLDOWN_STEP = 0.015;  // -1.5% к откату за уровень (§4: прокачка почти не ускоряет каст)
+  const EVO_SCALE_FIELDS = ['dmg', 'pctMaxHp', 'absorb', 'perEnemy', 'cloneDmg', 'hp'];  // §2/§26: radius не масштабируем; §6: pctHeavy не масштабируем
   const CHOICES_PER_LEVELUP = 4;
 
   // Автогенерация описания апгрейда из разницы цифр между уровнями — не пишем текст руками.
