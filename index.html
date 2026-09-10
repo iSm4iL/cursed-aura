@@ -536,7 +536,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.2';
+  const GAME_VERSION = '1.0.3';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -740,7 +740,7 @@
         { count: 5, dmg: 100, radius: 98, freeze: 900, cooldown: 850, offset: [40, 190] }
       ],
       evolutions: [
-        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек во все стороны', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 3, cooldown: 1900, scale: 2.9, charge: 600, projTex: 'tex-icicle' } },
+        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек, каждая прошивает линию врагов насквозь', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 12, life: 1500, cooldown: 1900, scale: 2.9, charge: 600, projTex: 'tex-icicle' } },
         { name: 'Чёрный лёд', desc: 'Постоянная большая область вокруг тебя, сильно замедляет врагов', type: 'slowarea', level6: { radius: 330, slowMult: 0.5, duration: 2000, cooldown: 1500 } },
         { name: 'Иний', desc: 'Иней оседает на самом крупном враге: все в зоне получают на 20% больше урона от любых источников', type: 'markzone', level6: { radius: 170, amp: 1.2, duration: 5000, cooldown: 4000 } }
       ]
@@ -2250,7 +2250,7 @@
     if (cfg.alpha) b.setAlpha(cfg.alpha);
     scene.physics.velocityFromRotation(angle, BOLT_SPEED, b.body.velocity);
     b.setRotation(angle);
-    b.lifespan = 1400;
+    b.lifespan = cfg.life || 1400;
     b.spawnedAt = time;
     b.dmg = cfg.dmg * dmgMult();
     b.pierceLeft = cfg.pierce || 0;
