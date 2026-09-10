@@ -140,6 +140,11 @@ const called = [...src.matchAll(/type === '\w+'\) (\w+)\(/g)].map((m) => m[1]);
 const missing = [...new Set(called)].filter((fn) => !new RegExp('function ' + fn + '\\s*\\(').test(src));
 if (missing.length) throw new Error('диспетчер зовёт несуществующие функции: ' + missing.join(', '));
 
+// ---- 15. Телеметрия забега на месте: версия, отправка на смерти, добор на закрытии вкладки.
+if (!/const GAME_VERSION = '/.test(src)) throw new Error('пропала константа GAME_VERSION');
+if (!/function doGameOver\(\)\{\s*running = false;\s*sendRun\('death'\);/.test(src)) throw new Error('doGameOver больше не шлёт забег в телеметрию');
+if (!/addEventListener\('pagehide',[\s\S]{0,60}?sendRun\('exit'\)/.test(src)) throw new Error('пропал добор телеметрии на pagehide');
+
 console.log('check ok:',
   'категории', Object.keys(tiers).join('/'),
   '| стоп-дистанция', stop, '<', playerR + tiers.normal.radius,
