@@ -245,6 +245,7 @@
   .levelcard h1{ color: var(--gold); }
   .pausecard{ width: min(420px, 92vw); }
   .pausecard h1{ color: var(--cursed); }
+  .pausever{ font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin: -2px 0 12px; letter-spacing: 0.06em; }
   .section-label{
     margin: 14px 0 6px;
     font-size: 11px;
@@ -518,6 +519,7 @@
 <div class="overlay" id="pauseOverlay">
   <div class="card pausecard">
     <h1>Пауза</h1>
+    <div class="pausever" id="pauseVer"></div>
     <div class="row"><span>Уровень</span><span id="pLevel">1</span></div>
     <div class="row"><span>Время</span><span id="pTime">00:00</span></div>
     <div class="row"><span>Изгнано тварей</span><span id="pKills">0</span></div>
@@ -3312,6 +3314,7 @@
     }).join('');
     document.getElementById('pLoot').innerHTML = lootHtml || '<div class="empty-note">Пока ничего</div>';
 
+    document.getElementById('pauseVer').textContent = 'версия ' + GAME_VERSION;
     document.getElementById('pauseOverlay').classList.add('show');
   }
 
