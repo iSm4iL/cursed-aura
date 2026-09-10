@@ -536,7 +536,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.1';
+  const GAME_VERSION = '1.0.2';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -846,7 +846,7 @@
       ],
       evolutions: [
         { name: 'Пушка', desc: 'Плотный поток воздуха идёт вперёд, расталкивая всех с дороги', type: 'forwardvolley', level6: { count: 1, dmg: 90, pierce: 8, cooldown: 1600, knockback: 150, scale: 1.5, projTex: 'tex-gust', alpha: 0.55 } },
-        { name: 'Рассекающая', desc: 'Вместо пуль — режущие волны вперёд: узкие у тебя и широкие вдали', type: 'slash', level6: { count: 5, dmg: 120, speed: 560, life: 900, w0: 30, w1: 150, gap: 140, cooldown: 1700 } },
+        { name: 'Разрез', desc: 'Вместо пуль — режущие волны вперёд: узкие у тебя и широкие вдали', type: 'slash', level6: { count: 5, dmg: 120, speed: 560, life: 900, w0: 30, w1: 150, gap: 140, cooldown: 1700 } },
         { name: 'Святая пуля', desc: 'Тяжёлые очищающие пули: снимают с врагов усиления и бьют сильнее обычных', level6: { count: 5, dmg: 125, pierce: 2, cooldown: 700, dispel: true } }
       ]
     },
@@ -1065,7 +1065,7 @@
   let runeTimer = 0, nextRuneIn = RUNE_SPAWN_MIN_MS;
 
   let stats;
-  let owned, evolved, evoLevel, lootCounts, lastFiredAt, run;
+  let owned, evolved, evoLevel, lootCounts, lastFiredAt, run, dmgSrc;
   let fusedAway = {};        // исходники слияния больше не кастуются
   let fusionsTaken = {};
   let evoUpgradesUnlocked = false;
@@ -1295,7 +1295,9 @@
     playerHp = stats.maxHp;
     killCount = 0;
     level = 1;
-    run = { startedIso: new Date().toISOString(), picks: [], levels: [], runes: {}, timeline: [], lastSampleAt: -30000, dmgDealt: 0, dmgTaken: 0, killedBy: null, sent: false };
+    run = { startedIso: new Date().toISOString(), picks: [], levels: [], runes: {}, timeline: [], lastSampleAt: -30000,
+      dmgDealt: 0, dmgTaken: 0, killedBy: null, sent: false,
+      dmgByWeapon: {}, killsByWeapon: {}, casts: {}, killsByCat: {}, xpCollected: 0, timeMoving: 0, timeStationary: 0 };
     xp = 0;
     pendingLevelUps = 0;
     elapsedMs = 0;
@@ -1581,6 +1583,7 @@
     }
   }
   function fireMarkZone(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     // Метка садится на самого жирного врага — при живом боссе это и будет босс.
@@ -1621,6 +1624,7 @@
   }
 
   function fireArea(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     const c = cfg.offset ? offsetPos(cfg) : { x: player.x, y: player.y };
@@ -1631,6 +1635,7 @@
   // Область с тиками по времени. atPlayer:true — область встаёт под игроком (Металл, Дождь),
   // иначе на ближайшем враге (Лава). count — сколько луж создаётся за каст.
   function fireZone(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     let spots = [];
@@ -1664,6 +1669,7 @@
   // Ведём вручную в updateAuras, чтобы она ездила вместе с персонажем.
   let activeAuras = [];
   function fireAura(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = weaponColor(weaponId);
     const img = attachToPlayer(scene.add.image(player.x, player.y, 'tex-ring').setTint(color).setAlpha(0.3).setScale(cfg.radius / 50).setDepth(-3));
@@ -1676,13 +1682,14 @@
     // Само солнце — отдельный объект над головой, чтобы источник эффекта был виден.
     const core = attachToPlayer(scene.add.image(player.x, player.y, 'tex-bolt').setTint(color).setScale(2.6).setDepth(44), -40);
     scene.tweens.add({ targets: core, scale: 3.1, yoyo: true, repeat: -1, duration: cfg.tickMs, ease: 'Sine.easeInOut' });
-    activeAuras.push({ img, core, cfg, color, until: elapsedMs + cfg.duration, nextTick: elapsedMs });
+    activeAuras.push({ img, core, cfg, color, src: weaponId, until: elapsedMs + cfg.duration, nextTick: elapsedMs });
   }
   function updateAuras(){
     for (let i = activeAuras.length - 1; i >= 0; i--){
       const a = activeAuras[i];
       if (elapsedMs >= a.nextTick){
         a.nextTick = elapsedMs + a.cfg.tickMs;
+        dmgSrc = a.src || dmgSrc;
         enemiesInRadius(player.x, player.y, a.cfg.radius).forEach((e) => {
           damageEnemy(e, spellDamage(a.cfg, e), a.color);
           // Ледяная пустыня: аура может не только жечь, но и морозить.
@@ -1704,6 +1711,7 @@
   // Гейзер: земля сначала вспухает (зрителю видно, куда бить не надо), и только потом
   // бьёт. Задержка windup — это и есть «анимация подготовки» из §38 спеки.
   function fireGeyser(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     const p = cfg.offset ? offsetPos(cfg) : ringPos(160);
@@ -1724,6 +1732,7 @@
   // Метеоритный дождь: много точек падения вокруг игрока, у каждой своя тень-предупреждение
   // и свой метеор, летящий сверху.
   function fireMeteors(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     spreadPositions(cfg, cfg.count || 10).forEach((p) => {
@@ -1746,6 +1755,7 @@
   // стягивает к линии и рвёт по доле здоровья. Тяжёлым (боссы, мини-боссы) — своя доля,
   // иначе 50% максимума превращали бы любую арену в две кнопки.
   function fireRift(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     const target = getNearestEnemies(1)[0];
@@ -1805,6 +1815,7 @@
     tremorDist = 0;
     const hits = enemiesInRadius(player.x, player.y, cfg.radius);
     const dmg = (cfg.dmg + hits.length * (cfg.perEnemy || 0)) * dmgMult();
+    dmgSrc = 'earth';
     hits.forEach((e) => damageEnemy(e, dmg, WEAPONS.earth.color));
     spawnPulseRing(player.x, player.y, cfg.radius, WEAPONS.earth.color);
   }
@@ -1828,6 +1839,7 @@
       const last = lavaCore.hits.get(e) || -99999;
       if (elapsedMs - last < (cfg.rehit || 700)) return;   // один враг не должен гореть каждый кадр
       lavaCore.hits.set(e, elapsedMs);
+      dmgSrc = 'lava';
       damageEnemy(e, spellDamage(cfg, e), WEAPONS.lava.color);
     });
   }
@@ -1836,6 +1848,7 @@
   // это цепочка небольших статичных блоков вдоль отрезка. Прочность общая на стену.
   let activeWalls = [];
   function fireWall(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     const base = facingAngle();
@@ -1886,11 +1899,12 @@
   // Пила: два диска расходятся в стороны и обходят игрока каждый на свои 180°.
   let activeSaws = [];
   function fireSaw(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const start = facingAngle();
     [1, -1].forEach((dir) => {
       const img = scene.add.image(player.x, player.y, 'tex-saw').setTint(WEAPONS[weaponId].color).setDepth(44);
-      activeSaws.push({ img: img, cfg: cfg, dir: dir, angle: start, swept: 0, hits: new Set(), color: WEAPONS[weaponId].color });
+      activeSaws.push({ img: img, cfg: cfg, dir: dir, angle: start, swept: 0, hits: new Set(), color: WEAPONS[weaponId].color, src: weaponId });
     });
   }
   function updateSaws(delta){
@@ -1905,6 +1919,7 @@
       enemiesInRadius(w.img.x, w.img.y, w.cfg.radius).forEach((e) => {
         if (w.hits.has(e)) return;                      // каждый враг ловит пилу один раз за проход
         w.hits.add(e);
+        dmgSrc = w.src || dmgSrc;
         damageEnemy(e, spellDamage(w.cfg, e), w.color);
       });
       if (w.swept >= Math.PI){
@@ -1917,6 +1932,7 @@
   // Рассекающая: волна летит вперёд и расширяется — узкая у игрока, широкая вдали.
   let activeSlashes = [];
   function fireSlash(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     for (let i = 0; i < (cfg.count || 1); i++){
       scene.time.delayedCall(i * (cfg.gap || 140), () => {
@@ -1924,7 +1940,7 @@
         const angle = facingAngle();
         const img = scene.add.image(player.x, player.y, 'tex-slash').setTint(WEAPONS[weaponId].color).setDepth(32).setRotation(angle);
         img.setScale(0.25, (cfg.w0 || 30) / 130);
-        activeSlashes.push({ img: img, cfg: cfg, angle: angle, age: 0, hits: new Set(), color: WEAPONS[weaponId].color, dmg: cfg.dmg * dmgMult() });
+        activeSlashes.push({ img: img, cfg: cfg, angle: angle, age: 0, hits: new Set(), color: WEAPONS[weaponId].color, dmg: cfg.dmg * dmgMult(), src: weaponId });
       });
     }
   }
@@ -1945,6 +1961,7 @@
         const perp = -dx * sinA + dy * cosA;
         if (Math.abs(along) <= 26 && Math.abs(perp) <= half){
           w.hits.add(e);
+          dmgSrc = w.src || dmgSrc;
           damageEnemy(e, w.dmg, w.color);
         }
       });
@@ -1957,6 +1974,7 @@
 
   // Залп строго вперёд, по направлению бега (Пушка, Драконьи стрелы).
   function fireForwardVolley(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const a = facingAngle();
     const count = cfg.count || 1;
@@ -2075,6 +2093,7 @@
 
   // Несколько отдельных взрывов, каждый на своей ближайшей цели (Лёд, Валуны).
   function fireMultiBurst(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     // offset — взрывы ложатся вокруг игрока (§8.1: «область вокруг игрока»), иначе
@@ -2096,6 +2115,7 @@
   // разовая вспышка, поэтому и перезарядка длиннее их времени жизни.
   let activeMonuments = [];
   function fireMonuments(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     const count = cfg.count || 6;
@@ -2108,7 +2128,7 @@
       const aura = scene.add.image(cx, cy, 'tex-ring').setTint(color).setAlpha(0.2).setScale(cfg.radius / 50).setDepth(-4);
       scene.tweens.add({ targets: aura, alpha: 0.32, yoyo: true, repeat: -1, duration: cfg.tickMs || 700 });
       spawnBurst(cx, cy, color, 6);
-      activeMonuments.push({ mon, aura, x: cx, y: cy, cfg, color, until: elapsedMs + cfg.duration, nextTick: elapsedMs });
+      activeMonuments.push({ mon, aura, x: cx, y: cy, cfg, color, src: weaponId, until: elapsedMs + cfg.duration, nextTick: elapsedMs });
     }
     scene.cameras.main.shake(160, 0.003);
   }
@@ -2145,6 +2165,7 @@
       const m = activeMonuments[i];
       if (elapsedMs >= m.nextTick){
         m.nextTick = elapsedMs + (m.cfg.tickMs || 700);
+        dmgSrc = m.src || dmgSrc;
         enemiesInRadius(m.x, m.y, m.cfg.radius).forEach((e) => {
           damageEnemy(e, spellDamage(m.cfg, e), m.color);
           if (e.active && m.cfg.slowMult){
@@ -2165,6 +2186,7 @@
 
   // Залп снарядов в N ближайших целей.
   function fireVolley(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const targets = getNearestEnemies(cfg.count);
     if (!targets.length) return;
@@ -2174,6 +2196,7 @@
   // Радиальный залп — снаряды расходятся по кругу от игрока (Залп стрел, Ледяное сердце),
   // а не летят в конкретные цели. charge — задержка перед выстрелом (сфера "копит силу").
   function fireRadialVolley(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const shoot = () => {
       // stagger — стрелы уходят одна за другой по часовой стрелке (Залп стрел):
@@ -2219,6 +2242,7 @@
   }
 
   function spawnDirectionalProjectile(weaponId, cfg, x, y, angle, time){
+    dmgSrc = weaponId;
     const b = bolts.create(x, y, cfg.projTex || 'tex-bolt');
     b.body.setCircle(6);
     b.setTint(WEAPONS[weaponId].color);
@@ -2233,17 +2257,19 @@
     b.knockback = cfg.knockback || 0;
     b.dispel = !!cfg.dispel;
     b.color = WEAPONS[weaponId].color;
+    b.src = weaponId;
     b.hitEnemies = new Set();
     if (cfg.trailTicks){
       for (let i = 1; i <= cfg.trailTicks; i++){
         const dist = i * cfg.trailGap;
-        spawnFirePatch(x + Math.cos(angle) * dist, y + Math.sin(angle) * dist, cfg.trailDmg * dmgMult(), cfg.tickMs);
+        spawnFirePatch(x + Math.cos(angle) * dist, y + Math.sin(angle) * dist, cfg.trailDmg * dmgMult(), cfg.tickMs, weaponId);
       }
     }
   }
 
   // Барьер — заряды, которые гасят входящий урон (см. onEnemyTouchPlayer).
   function fireBarrier(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     shieldCharges = cfg.absorb;
     shieldRepel = cfg.repel || 0;
@@ -2252,6 +2278,7 @@
 
   // "Неуязвимость" — таймерный бафф, переиспользует руну invuln, но со штрафом к урону.
   function fireInvuln(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     activeBuffs.invuln = elapsedMs + cfg.duration;
     invulnDmgPenaltyUntil = elapsedMs + cfg.duration;
@@ -2266,6 +2293,7 @@
   let activeWaves = [];
 
   function fireWave(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const angle = Math.random() * Math.PI * 2;
     spawnWaveBolt(weaponId, cfg, angle, time);
@@ -2274,12 +2302,14 @@
   // Драконья стрела: два огромных снаряда, вперёд и назад по направлению бега.
   // Каждый пролетает НАСКВОЗЬ через всех, кого пересёк, и не гаснет о первого врага.
   function fireDragon(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const a = facingAngle();
     spawnWaveBolt(weaponId, cfg, a, time);
     spawnWaveBolt(weaponId, cfg, a + Math.PI, time);
   }
   function spawnWaveBolt(weaponId, cfg, angle, time){
+    dmgSrc = weaponId;
     // Как Kunkka's Torrent: волна стартует за краем экрана позади игрока и летит сквозь
     // него до противоположного края — визуально всегда пересекает весь видимый участок поля.
     // fromPlayer — снаряд вылетает из самого игрока (Драконья стрела).
@@ -2304,7 +2334,8 @@
       halfLength: cfg.halfLength || 260,        // поперёк полёта
       spawnedAt: time,
       lifespan: ((cfg.fromPlayer ? half * 1.15 : half * 2.3) / cfg.speed) * 1000,
-      hitEnemies: new Set()
+      hitEnemies: new Set(),
+      src: weaponId
     });
   }
 
@@ -2324,7 +2355,7 @@
         const localY = -dx * sinA + dy * cosA;
         if (Math.abs(localX) <= w.halfThickness && Math.abs(localY) <= w.halfLength) hits.push(e);
       });
-      hits.forEach((e) => { w.hitEnemies.add(e); damageEnemy(e, w.dmg, w.color); });
+      hits.forEach((e) => { w.hitEnemies.add(e); dmgSrc = w.src || dmgSrc; damageEnemy(e, w.dmg, w.color); });
 
       if (time - w.spawnedAt > w.lifespan){
         w.img.destroy();
@@ -2336,6 +2367,7 @@
   // Кровь подчиняет СЛУЧАЙНЫХ врагов в видимой области, а не всегда ближайших —
   // так армия расползается по полю, а не липнет к игроку.
   function fireCharm(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const count = cfg.count || 1;
     const cam = scene.cameras.main;
@@ -2360,6 +2392,7 @@
   }
 
   function fireSlowArea(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const hits = [];
     enemies.children.each((e) => {
@@ -2376,12 +2409,13 @@
   // Огненная стрела: снаряд в ближайшего врага. Сам горящий след раскладывает
   // spawnDirectionalProjectile — он общий для всех снарядов, у которых есть trailTicks.
   function fireTrailShot(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const target = getNearestEnemies(1)[0];
     if (!target) return;
     spawnProjectile(weaponId, cfg, target, time);
   }
-  function spawnFirePatch(x, y, dmg, tickMs){
+  function spawnFirePatch(x, y, dmg, tickMs, src){
     const patch = scene.add.image(x, y, 'tex-ring').setTint(0xff7a3d).setAlpha(0.35).setScale(0.5).setDepth(-5);
     const radius = 26;
     const tick = () => {
@@ -2390,6 +2424,7 @@
       enemies.children.each((e) => {
         if (e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= radius) hits.push(e);
       });
+      dmgSrc = src || 'fire';
       hits.forEach((e) => damageEnemy(e, dmg, 0xff7a3d));
     };
     tick();
@@ -2400,6 +2435,7 @@
   // Общий проход по цепи — используется обычной молнией, "Гневом небес" (несколько цепей
   // разом) и пассивным проком "Цепной реакции", чтобы не дублировать один и тот же код трижды.
   function walkChain(start, cfg, color){
+    dmgSrc = 'lightning';
     const hitSet = new Set();
     let current = start;
     let prevX = player.x, prevY = player.y;
@@ -2432,6 +2468,7 @@
   }
 
   function fireChain(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     // cfg.radius — «бьёт только тех, кто вошёл в радиус» (Громовая туча).
     const first = cfg.radius ? nearestEnemyWithin(cfg.radius) : getNearestEnemies(1)[0];
@@ -2440,6 +2477,7 @@
   }
 
   function fireMultiChain(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const starters = getNearestEnemies(cfg.strikes || 5);
     starters.forEach((s) => walkChain(s, cfg, WEAPONS[weaponId].color));
@@ -2526,6 +2564,7 @@
   }
 
   function fireDelayedBlast(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const targets = getNearestEnemies(cfg.count || 1);
     targets.forEach((target) => {
@@ -2535,6 +2574,7 @@
     });
   }
   function triggerBlast(x, y, cfg, weaponId){
+    dmgSrc = weaponId;
     const color = WEAPONS[weaponId].color;
     enemiesInRadius(x, y, cfg.radius).forEach((e) => damageEnemy(e, spellDamage(cfg, e), color));
     spawnPulseRing(x, y, cfg.radius, color);
@@ -2545,6 +2585,7 @@
   // чтобы способность не решала бой с боссом в одиночку. Отсюда и огромная перезарядка.
   // Небесный удар: ракеты по случайным целям + молнии в тех же местах.
   function fireSkyStrike(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = weaponColor(weaponId);
     const reach = (cfg.range || 300) * 1.4;
@@ -2570,6 +2611,7 @@
   }
 
   function fireNukeGlobal(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
     const cam = scene.cameras.main;
@@ -2585,12 +2627,14 @@
   }
 
   function fireNovaSelf(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     triggerNuke(player.x, player.y, cfg, weaponId);
     scene.cameras.main.shake(260, 0.006);
   }
 
   function fireNukeBlast(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const target = getNearestEnemies(1)[0];
     const angle = target ? Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y) : Math.random() * Math.PI * 2;
@@ -2605,6 +2649,7 @@
     });
   }
   function triggerNuke(x, y, cfg, weaponId){
+    dmgSrc = weaponId;
     enemies.children.each((e) => {
       if (!e.active) return;
       const d = Phaser.Math.Distance.Between(x, y, e.x, e.y);
@@ -2619,6 +2664,7 @@
   // Имплозия — снаряд без прямого удара; в точке взрыва затягивает врагов к центру
   // (боссов не трогаем — выдёргивать босса через пол-экрана выглядело бы нелепо).
   function firePull(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const target = getNearestEnemies(1)[0];
     const angle = target ? Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y) : Math.random() * Math.PI * 2;
@@ -2633,6 +2679,7 @@
     });
   }
   function triggerPull(x, y, cfg, weaponId){
+    dmgSrc = weaponId;
     enemies.children.each((e) => {
       if (!e.active || e.heavy) return;
       const d = Phaser.Math.Distance.Between(x, y, e.x, e.y);
@@ -2650,6 +2697,7 @@
   // Иерихон — веер ракет вокруг игрока (не в одну цель), каждая взрывается обычным
   // triggerBlast по прибытии.
   function fireRocketVolley(weaponId, time){
+    dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
     const count = cfg.count || 6;
     // Не ровный веер одинаковых ракет, а залп по случайным целям вокруг игрока:
@@ -2712,7 +2760,7 @@
     const isCrit = !byAlly && Math.random() < stats.critChance;
     const finalDmg = (isCrit ? Math.round(dmg * stats.critMult) : dmg) * markAmpAt(enemy.x, enemy.y);
     enemy.hp -= finalDmg;
-    if (!byAlly && run) run.dmgDealt += finalDmg;
+    if (!byAlly && run){ run.dmgDealt += finalDmg; if (dmgSrc) run.dmgByWeapon[dmgSrc] = (run.dmgByWeapon[dmgSrc] || 0) + finalDmg; }
     spawnBurst(enemy.x, enemy.y, isCrit ? 0xffffff : burstColor, isCrit ? 8 : 5);
     if (enemy.hp <= 0) killEnemy(enemy, byAlly);
   }
@@ -2740,6 +2788,7 @@
 
     enemy.destroy();
     killCount += 1;
+    if (run){ run.killsByCat[enemy.tier] = (run.killsByCat[enemy.tier] || 0) + 1; if (!byAlly && dmgSrc) run.killsByWeapon[dmgSrc] = (run.killsByWeapon[dmgSrc] || 0) + 1; }
     maybeDeathSpark(ex, ey);
 
     // Мини-босс и босс дают долю от опыта, нужного до следующего уровня; остальные —
@@ -2876,6 +2925,7 @@
       if (enemy.body) enemy.body.updateFromGameObject();
     }
 
+    dmgSrc = bolt.src || dmgSrc;
     damageEnemy(enemy, bolt.dmg, bolt.color);
   }
 
@@ -2956,6 +3006,7 @@
 
   function grantXp(amount){
     xp += amount;
+    if (run) run.xpCollected += amount;
     while (xp >= xpNeeded(level)){
       xp -= xpNeeded(level);
       level += 1;
@@ -3521,6 +3572,9 @@
           critChance: +stats.critChance.toFixed(3), critMult: +stats.critMult.toFixed(2), evasion: +stats.evasion.toFixed(3),
           dmgMult: +globalDmgMult.toFixed(3), cdMult: +globalCooldownMult.toFixed(3), durMult: +globalDurationMult.toFixed(3)
         },
+        dmg_by_weapon: run.dmgByWeapon, kills_by_weapon: run.killsByWeapon, casts: run.casts,
+        kills_by_cat: run.killsByCat, xp_collected: run.xpCollected,
+        time_moving: Math.round(run.timeMoving), time_stationary: Math.round(run.timeStationary),
         runes: run.runes, timeline: run.timeline,
         picks: run.picks, levels: run.levels
       }
@@ -3560,6 +3614,9 @@
 
     elapsedMs += delta;
     if (!bossActive) runMs += delta;
+    if (run && player.body){
+      if (Math.abs(player.body.velocity.x) + Math.abs(player.body.velocity.y) > 12) run.timeMoving += delta; else run.timeStationary += delta;
+    }
     if (run && runMs - run.lastSampleAt >= 30000){
       run.lastSampleAt = runMs;
       run.timeline.push({ t: Math.round(runMs), lvl: level, kills: killCount, hp: Math.round(Math.max(0, playerHp)), dmg: Math.round(run.dmgDealt), en: enemies.countActive(true) });
@@ -3722,6 +3779,7 @@
       if (cfg.duration) cd = Math.max(cd, Math.min(cfg.cooldown, cfg.duration));
       if (time - (lastFiredAt[id] || 0) > cd){
         lastFiredAt[id] = time;
+        if (run) run.casts[id] = (run.casts[id] || 0) + 1;
         if (type === 'area') fireArea(id, time);
         else if (type === 'wave') fireWave(id, time);
         else if (type === 'dragon') fireDragon(id, time);
