@@ -145,7 +145,22 @@ if (!/const GAME_VERSION = '/.test(src)) throw new Error('пропала кон�
 if (!/function doGameOver\(\)\{\s*running = false;\s*sendRun\('death'\);/.test(src)) throw new Error('doGameOver больше не шлёт забег в телеметрию');
 if (!/addEventListener\('pagehide',[\s\S]{0,60}?sendRun\('exit'\)/.test(src)) throw new Error('пропал добор телеметрии на pagehide');
 
+// ---- 16. Система артефактов: у каждой записи LOOT есть apply, caps на месте, пулы не пустые.
+const lootBlock = src.slice(src.indexOf('const LOOT = {'), src.indexOf('const LOOT_IDS = Object.keys'));
+const lootEntries = [...lootBlock.matchAll(/\n    (\w+):\s*\{[^\n]*\brarity:/g)].map((m) => m[1]);
+if (lootEntries.length < 30) throw new Error('в LOOT меньше 30 артефактов: ' + lootEntries.length);
+const noApply = [...lootBlock.matchAll(/\n    (\w+):\s*\{([^\n]*)\}/g)].filter((m) => !/\bapply:\s*\(\)/.test(m[2])).map((m) => m[1]);
+if (noApply.length) throw new Error('артефакты без apply(): ' + noApply.join(', '));
+if (!/const ART_CAP = \{ dmg: [\d.]+, speed: [\d.]+, cd: [\d.]+, hp: [\d.]+ \}/.test(src)) throw new Error('пропал ART_CAP');
+if (!/const RIFT_POOL = /.test(src) || !/const BOSS_POOL = /.test(src)) throw new Error('пропали пулы дропа RIFT_POOL/BOSS_POOL');
+if (!/\* artDmgFactor\(enemy\)/.test(src)) throw new Error('artDmgFactor не вплетён в damageEnemy');
+if (!/updateNukeChip\(time\);\n\s*updateArtRuntime\(\)/.test(src)) throw new Error('updateArtRuntime не зовётся в update()');
+if (!/playerHp <= 0 && !reviveLastResort\(\)\) doGameOver\(\)/.test(src)) throw new Error('reviveLastResort не в пути смерти игрока');
+const rr = {};
+[...lootBlock.matchAll(/rarity: R\.(\w)/g)].forEach((m) => rr[m[1]] = (rr[m[1]] || 0) + 1);
+
 console.log('check ok:',
   'категории', Object.keys(tiers).join('/'),
   '| стоп-дистанция', stop, '<', playerR + tiers.normal.radius,
-  '| арена', bMin + '-' + bMax, 'боссов раз в', num(/const BOSS_INTERVAL_MS = (\d+)/, 'i') / 60000, 'мин');
+  '| арена', bMin + '-' + bMax, 'боссов раз в', num(/const BOSS_INTERVAL_MS = (\d+)/, 'i') / 60000, 'мин',
+  '| артефактов', lootEntries.length, '(c' + (rr.c||0) + '/u' + (rr.u||0) + '/r' + (rr.r||0) + '/e' + (rr.e||0) + '/l' + (rr.l||0) + ')');
