@@ -85,6 +85,11 @@
     font-size: 14px;
   }
 
+  .nukechip{
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; letter-spacing: 0.04em;
+    color: var(--gold); padding: 3px 8px; border: 1px solid var(--gold-dim); border-radius: 6px; background: #12162299;
+  }
+  .nukechip.ready{ color: #ffd93b; border-color: var(--gold); }
   .timer{
     font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
@@ -457,6 +462,7 @@
   <div class="topbar">
     <div class="levelbadge" id="levelBadge">1</div>
     <div class="timer" id="timer">00:00</div>
+    <div class="nukechip" id="nukeChip" hidden>☢ <span id="nukeVal">–</span></div>
   </div>
   <div class="bosswrap" id="bossWrap">
     <div class="bossname">Арена стражей · осталось <span id="bossCount">0</span></div>
@@ -536,7 +542,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.3';
+  const GAME_VERSION = '1.0.4';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -697,6 +703,20 @@
   // Все числа тут — стартовые цели баланса, меняются правкой этой таблицы, без правки логики.
   // falloff — доля от dmg на N-м прыжке цепи (индекс 0 = первая цель).
   const CHAIN_FALLOFF = [1, 0.75, 0.55, 0.40, 0.30, 0.22, 0.18];
+  // §2/§4: у каждого класса свой пол CD. Пол только НЕ ДАЁТ артефактам/предметам
+  // опустить откат ниже минимума — но никогда не поднимает собственный CD способности.
+  const CD_FLOOR = { fast: 700, medium: 1800, slow: 2800, ultra: 30000 };
+  const CD_CLASS = {
+    airbullet: 'fast', fire: 'fast', lightning: 'fast', 'Святая пуля': 'fast',
+    frost: 'medium', blast: 'medium', earth: 'medium', metal: 'medium', charm: 'medium', barrier: 'medium',
+    'Пушка': 'medium', 'Шторм': 'medium', 'Пила': 'medium', 'Имплозия': 'medium', 'Валуны': 'medium',
+    'Вулкан': 'medium', 'Метеоритный дождь': 'medium', 'Гейзер': 'medium', 'Стена': 'medium', 'Неуязвимость': 'medium',
+    wave: 'slow', 'Цунами': 'slow', 'Ледяное сердце': 'slow', 'Чёрный лёд': 'slow', 'Иний': 'slow',
+    'Залп стрел': 'slow', 'Драконьи стрелы': 'slow', 'Солнце': 'slow', 'Гнев небес': 'slow', 'Иерихон': 'slow',
+    'Разрез': 'slow', 'Разлом': 'slow', 'Монументы': 'slow', 'Ледяная пустыня': 'slow',
+    'Небесный удар': 'slow', 'Обвал': 'slow', 'Отражающий барьер': 'slow',
+    'Термоядерный взрыв': 'ultra'
+  };
   const NECRO_MAX_ALLIES = 25;
 
   const WEAPONS = {
@@ -740,9 +760,9 @@
         { count: 5, dmg: 100, radius: 98, freeze: 900, cooldown: 850, offset: [40, 190] }
       ],
       evolutions: [
-        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек, каждая прошивает линию врагов насквозь', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 12, life: 1500, cooldown: 1900, scale: 2.9, charge: 600, projTex: 'tex-icicle' } },
-        { name: 'Чёрный лёд', desc: 'Постоянная большая область вокруг тебя, сильно замедляет врагов', type: 'slowarea', level6: { radius: 330, slowMult: 0.5, duration: 2000, cooldown: 1500 } },
-        { name: 'Иний', desc: 'Иней оседает на самом крупном враге: все в зоне получают на 20% больше урона от любых источников', type: 'markzone', level6: { radius: 170, amp: 1.2, duration: 5000, cooldown: 4000 } }
+        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек, каждая прошивает линию врагов насквозь', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 999, life: 1500, cooldown: 2800, scale: 2.9, charge: 600, projTex: 'tex-icicle' } },
+        { name: 'Чёрный лёд', desc: 'Постоянная область вокруг тебя, ощутимо замедляет врагов', type: 'slowarea', level6: { radius: 210, slowMult: 0.65, duration: 2000, cooldown: 1500 } },
+        { name: 'Иний', desc: 'Иней оседает на крупном враге: зона замедляет, все в ней получают на 20% больше урона и понемногу тают', type: 'markzone', level6: { radius: 150, amp: 1.2, slowMult: 0.75, slowMs: 1200, pctMaxHp: 0.015, tickMs: 900, duration: 5000, cooldown: 4000 } }
       ]
     },
     fire: {
@@ -755,39 +775,39 @@
         { dmg: 102, pierce: 2, cooldown: 850, trailDmg: 22, trailTicks: 8, trailGap: 22, tickMs: 300 }
       ],
       evolutions: [
-        { name: 'Залп стрел', desc: '10 огненных стрел разлетаются во все стороны, каждая оставляет след', type: 'radialvolley', level6: { count: 10, dmg: 40, pierce: 1, cooldown: 2600, stagger: 175, trailDmg: 10, trailTicks: 3, trailGap: 26, tickMs: 380 } },
+        { name: 'Залп стрел', desc: '10 огненных стрел разлетаются во все стороны, каждая оставляет след', type: 'radialvolley', level6: { count: 10, dmg: 40, pierce: 1, cooldown: 3800, stagger: 175, trailDmg: 10, trailTicks: 3, trailGap: 26, tickMs: 380 } },
         { name: 'Драконьи стрелы', desc: 'Две огромные стрелы уходят вперёд и назад, прошивая насквозь всех на пути', type: 'dragon', level6: { dmg: 280, speed: 620, cooldown: 3600, tex: 'tex-dragon', halfThickness: 190, halfLength: 30, fromPlayer: true } },
-        { name: 'Солнце', desc: 'Солнце висит над тобой и волнами выжигает всё вокруг', type: 'aura', color: 0xffd93b, level6: { dmg: 42, radius: 180, tickMs: 460, duration: 3600, cooldown: 3600 } }
+        { name: 'Солнце', desc: 'Солнце висит над тобой и волнами выжигает всё вокруг', type: 'aura', color: 0xffb52e, level6: { dmg: 42, radius: 130, tickMs: 460, duration: 3600, cooldown: 3600 } }
       ]
     },
     lightning: {
       name: 'Молния', color: 0xf5e14a, type: 'chain',
       levels: [null,
-        { dmg: 42, cooldown: 1000, chainCount: 3, chainRadius: 150, falloff: CHAIN_FALLOFF, summary: 'Молния бьёт ближайшего врага и перескакивает по цепи на соседних' },
-        { dmg: 55, cooldown: 950, chainCount: 4, chainRadius: 160, falloff: CHAIN_FALLOFF },
-        { dmg: 70, cooldown: 880, chainCount: 5, chainRadius: 170, falloff: CHAIN_FALLOFF },
-        { dmg: 88, cooldown: 820, chainCount: 6, chainRadius: 185, falloff: CHAIN_FALLOFF },
-        { dmg: 108, cooldown: 750, chainCount: 7, chainRadius: 200, falloff: CHAIN_FALLOFF }
+        { dmg: 42, cooldown: 1900, chainCount: 3, chainRadius: 150, falloff: CHAIN_FALLOFF, summary: 'Молния бьёт ближайшего врага и перескакивает по цепи на соседних' },
+        { dmg: 55, cooldown: 1750, chainCount: 4, chainRadius: 160, falloff: CHAIN_FALLOFF },
+        { dmg: 70, cooldown: 1600, chainCount: 5, chainRadius: 170, falloff: CHAIN_FALLOFF },
+        { dmg: 88, cooldown: 1450, chainCount: 6, chainRadius: 185, falloff: CHAIN_FALLOFF },
+        { dmg: 108, cooldown: 1350, chainCount: 7, chainRadius: 200, falloff: CHAIN_FALLOFF }
       ],
       evolutions: [
         { name: 'Разряд смерти', desc: 'Каждый убитый враг лопается разрядом: цепь бьёт по тем, кто стоял рядом', type: 'deathspark', level6: { dmg: 55, chainCount: 3, chainRadius: 145, falloff: [1, 0.6, 0.4], cooldown: 999999 } },
-        { name: 'Гнев небес', desc: '10 молний обрушиваются разом вокруг тебя, каждая с короткой цепью', type: 'multichain', level6: { dmg: 150, cooldown: 4200, chainCount: 3, chainRadius: 120, strikes: 10, falloff: [1, 0.55, 0.35] } },
+        { name: 'Гнев небес', desc: '8 молний обрушиваются разом вокруг тебя, каждая с короткой цепью', type: 'multichain', level6: { dmg: 150, cooldown: 6500, chainCount: 3, chainRadius: 120, strikes: 8, falloff: [1, 0.55, 0.35] } },
         { name: 'Цепная реакция', desc: 'Каждое другое твоё заклинание дополнительно бьёт цепной молнией', type: 'reactionproc', level6: { dmg: 100, chainCount: 10, chainRadius: 150, falloff: [1, 0.8, 0.65, 0.5, 0.4, 0.3, 0.24, 0.19, 0.15, 0.12] } }
       ]
     },
     blast: {
       name: 'Взрыв', color: 0xffa23d, type: 'delayedblast',
       levels: [null,
-        { dmg: 60, count: 1, cooldown: 850, radius: 84, speed: 580, summary: 'Летит молча в ближайшего врага и взрывается в цели' },
-        { dmg: 75, count: 1, cooldown: 820, radius: 90, speed: 580 },
-        { dmg: 95, count: 2, cooldown: 780, radius: 98, speed: 600 },
-        { dmg: 118, count: 2, cooldown: 740, radius: 108, speed: 600 },
-        { dmg: 140, count: 2, cooldown: 700, radius: 118, speed: 620 }
+        { dmg: 60, count: 1, cooldown: 1600, radius: 84, speed: 580, summary: 'Летит молча в ближайшего врага и взрывается в цели' },
+        { dmg: 75, count: 1, cooldown: 1500, radius: 90, speed: 580 },
+        { dmg: 95, count: 2, cooldown: 1400, radius: 98, speed: 600 },
+        { dmg: 118, count: 2, cooldown: 1300, radius: 108, speed: 600 },
+        { dmg: 140, count: 2, cooldown: 1200, radius: 118, speed: 620 }
       ],
       evolutions: [
-        { name: 'Термоядерный взрыв', desc: 'Вспышка стирает с карты всех обычных, усиленных и элитных; боссам сносит треть здоровья', type: 'nukeglobal', level6: { pctHeavy: 0.35, cooldown: 40000 } },
+        { name: 'Термоядерный взрыв', desc: 'Вспышка стирает с карты всех обычных, усиленных и элитных; боссам сносит треть здоровья', type: 'nukeglobal', level6: { pctHeavy: 0.45, cooldown: 40000 } },
         { name: 'Имплозия', desc: 'Слабый урон, но мощно стягивает врагов в одну точку', type: 'pull', level6: { dmg: 40, radius: 240, pull: 200, speed: 560, cooldown: 3800 } },
-        { name: 'Иерихон', desc: '10 ракет уходят по случайным целям вокруг тебя и рвутся при попадании', type: 'volleyburst', level6: { dmg: 155, radius: 125, range: 280, speed: 600, cooldown: 3400, count: 10, projTex: 'tex-rocket' } }
+        { name: 'Иерихон', desc: '10 ракет уходят по случайным целям вокруг тебя и рвутся при попадании', type: 'volleyburst', level6: { dmg: 155, radius: 125, range: 280, speed: 600, cooldown: 5500, count: 10, projTex: 'tex-rocket' } }
       ]
     },
     earth: {
@@ -808,14 +828,14 @@
     metal: {
       name: 'Металлические шипы', color: 0xb9c2d0, type: 'zone',
       levels: [null,
-        { dmg: 26, radius: 132, tickMs: 520, duration: 3000, cooldown: 2500, offset: [70, 180], summary: 'Неподалёку от тебя из земли лезут шипы и рвут всех, кто попал в них' },
-        { dmg: 34, radius: 152, tickMs: 510, duration: 3200, cooldown: 2400, offset: [70, 190] },
-        { dmg: 44, radius: 172, tickMs: 500, duration: 3400, cooldown: 2300, offset: [70, 200] },
-        { dmg: 56, radius: 192, tickMs: 490, duration: 3600, cooldown: 2200, offset: [70, 210] },
-        { dmg: 70, radius: 212, tickMs: 480, duration: 3800, cooldown: 2100, offset: [70, 220] }
+        { dmg: 26, radius: 110, tickMs: 520, duration: 3000, cooldown: 2600, offset: [70, 180], summary: 'Неподалёку от тебя из земли лезут шипы и рвут всех, кто попал в них' },
+        { dmg: 34, radius: 125, tickMs: 510, duration: 3200, cooldown: 2500, offset: [70, 190] },
+        { dmg: 44, radius: 140, tickMs: 500, duration: 3400, cooldown: 2400, offset: [70, 200] },
+        { dmg: 56, radius: 152, tickMs: 490, duration: 3600, cooldown: 2350, offset: [70, 210] },
+        { dmg: 70, radius: 162, tickMs: 480, duration: 3800, cooldown: 2350, offset: [70, 220] }
       ],
       evolutions: [
-        { name: 'Монументы', desc: '6 столбов вырастают из земли, пять секунд бьют долей здоровья и держат врагов замедленными', type: 'monuments', level6: { count: 6, pctMaxHp: 0.05, dmg: 20, radius: 105, orbit: 185, duration: 5000, tickMs: 700, slowMult: 0.5, slowMs: 900, cooldown: 7000 } },
+        { name: 'Монументы', desc: '6 столбов вырастают из земли, пять секунд бьют долей здоровья и держат врагов замедленными', type: 'monuments', level6: { count: 6, pctMaxHp: 0.05, dmg: 20, radius: 95, orbit: 165, duration: 3000, tickMs: 700, slowMult: 0.5, slowMs: 900, cooldown: 9000 } },
         { name: 'Стена', desc: 'Две тяжёлые стены встают перед тобой: враги не проходят сквозь них, пока не разобьют', type: 'wall', level6: { hp: 700, duration: 9000, cooldown: 8000, length: 200, dist: 100, spread: 0.85, block: 26 } },
         { name: 'Пила', desc: 'Две пилы расходятся в стороны и обходят тебя по кругу, вгрызаясь в каждого на пути', type: 'saw', level6: { dmg: 60, pctMaxHp: 0.08, orbit: 150, radius: 42, spin: 3.4, cooldown: 2200 } }
       ]
@@ -823,11 +843,11 @@
     lava: {
       name: 'Лава', color: 0xff5a1f, type: 'zone',
       levels: [null,
-        { pctMaxHp: 0.030, dmg: 12, radius: 120, tickMs: 620, duration: 3000, count: 1, cooldown: 3600, offset: [90, 230], summary: 'Лужи лавы разливаются рядом с тобой и выжигают долю здоровья у всех, кто в них стоит' },
-        { pctMaxHp: 0.040, dmg: 16, radius: 128, tickMs: 620, duration: 4000, count: 1, cooldown: 3600, offset: [90, 240] },
-        { pctMaxHp: 0.050, dmg: 21, radius: 136, tickMs: 620, duration: 5000, count: 2, cooldown: 3600, offset: [90, 250] },
-        { pctMaxHp: 0.062, dmg: 26, radius: 146, tickMs: 620, duration: 6000, count: 2, cooldown: 3600, offset: [90, 260] },
-        { pctMaxHp: 0.075, dmg: 32, radius: 156, tickMs: 620, duration: 7000, count: 3, cooldown: 3600, offset: [90, 270] }
+        { pctMaxHp: 0.030, dmg: 12, radius: 100, tickMs: 620, duration: 3000, count: 1, cooldown: 3600, offset: [130, 300], summary: 'Лужи лавы разливаются рядом с тобой и выжигают долю здоровья у всех, кто в них стоит' },
+        { pctMaxHp: 0.040, dmg: 16, radius: 108, tickMs: 620, duration: 4000, count: 1, cooldown: 3600, offset: [130, 300] },
+        { pctMaxHp: 0.050, dmg: 21, radius: 116, tickMs: 620, duration: 5000, count: 1, cooldown: 3600, offset: [130, 310] },
+        { pctMaxHp: 0.062, dmg: 26, radius: 124, tickMs: 620, duration: 6000, count: 2, cooldown: 3600, offset: [130, 310] },
+        { pctMaxHp: 0.075, dmg: 32, radius: 130, tickMs: 620, duration: 7000, count: 2, cooldown: 3600, offset: [130, 320] }
       ],
       evolutions: [
         { name: 'Вулкан', desc: 'Вместо долгой лужи — короткие извержения, но бьют втрое больнее', type: 'zone', level6: { pctMaxHp: 0.20, dmg: 45, radius: 135, tickMs: 380, duration: 1500, count: 4, cooldown: 4000, offset: [90, 260] } },
@@ -838,15 +858,15 @@
     airbullet: {
       name: 'Воздушная пуля', color: 0xbfe9ff, type: 'volley',
       levels: [null,
-        { count: 1, dmg: 36, pierce: 0, cooldown: 650, summary: 'Быстрая воздушная пуля летит в ближайшего врага' },
-        { count: 2, dmg: 46, pierce: 0, cooldown: 620 },
-        { count: 3, dmg: 58, pierce: 1, cooldown: 590 },
-        { count: 4, dmg: 72, pierce: 1, cooldown: 560 },
-        { count: 5, dmg: 90, pierce: 2, cooldown: 520 }
+        { count: 1, dmg: 36, pierce: 0, cooldown: 1000, summary: 'Быстрая воздушная пуля летит в ближайшего врага' },
+        { count: 2, dmg: 46, pierce: 0, cooldown: 960 },
+        { count: 3, dmg: 58, pierce: 1, cooldown: 920 },
+        { count: 4, dmg: 72, pierce: 1, cooldown: 880 },
+        { count: 5, dmg: 90, pierce: 2, cooldown: 850 }
       ],
       evolutions: [
         { name: 'Пушка', desc: 'Плотный поток воздуха идёт вперёд, расталкивая всех с дороги', type: 'forwardvolley', level6: { count: 1, dmg: 90, pierce: 8, cooldown: 1600, knockback: 150, scale: 1.5, projTex: 'tex-gust', alpha: 0.55 } },
-        { name: 'Разрез', desc: 'Вместо пуль — режущие волны вперёд: узкие у тебя и широкие вдали', type: 'slash', level6: { count: 5, dmg: 120, speed: 560, life: 900, w0: 30, w1: 150, gap: 140, cooldown: 1700 } },
+        { name: 'Разрез', desc: 'Вместо пуль — режущие волны вперёд: узкие у тебя и широкие вдали', type: 'slash', level6: { count: 5, dmg: 120, speed: 560, life: 900, w0: 30, w1: 150, gap: 140, cooldown: 2800 } },
         { name: 'Святая пуля', desc: 'Тяжёлые очищающие пули: снимают с врагов усиления и бьют сильнее обычных', level6: { count: 5, dmg: 125, pierce: 2, cooldown: 700, dispel: true } }
       ]
     },
@@ -893,7 +913,7 @@
   // Результаты слияний. hidden:true — кастуются, но в выборе прокачки не появляются.
   WEAPONS.fz_waste = {
     name: 'Ледяная пустыня', color: 0x9fe8ff, type: 'aura', hidden: true,
-    levels: [null, { dmg: 95, radius: 300, tickMs: 380, duration: 6000, cooldown: 6000, slowMult: 0.25, slowMs: 1200, amp: 1.25, summary: 'Постоянная ледяная пустошь вокруг тебя' }],
+    levels: [null, { dmg: 95, radius: 200, tickMs: 380, duration: 6000, cooldown: 6000, slowMult: 0.45, slowMs: 1200, amp: 1.25, summary: 'Постоянная ледяная пустошь вокруг тебя' }],
     evolutions: []
   };
   WEAPONS.sk_strike = {
@@ -1575,11 +1595,17 @@
   }
   function updateMarkZones(){
     for (let i = markZones.length - 1; i >= 0; i--){
-      if (markZones[i].follow){ markZones[i].x = player.x; markZones[i].y = player.y; }
-      if (elapsedMs >= markZones[i].until){
-        markZones[i].img.destroy();
-        markZones.splice(i, 1);
+      const z = markZones[i];
+      if (z.follow){ z.x = player.x; z.y = player.y; }
+      if (z.cfg && z.cfg.pctMaxHp && elapsedMs >= (z.nextTick || 0)){
+        z.nextTick = elapsedMs + (z.cfg.tickMs || 900);
+        dmgSrc = 'frost';
+        enemiesInRadius(z.x, z.y, z.radius).forEach((e) => {
+          damageEnemy(e, (e.maxHp || ENEMY_BASE_HP) * z.cfg.pctMaxHp * pctFalloff(e) * dmgMult(), 0x9fe8ff);
+          if (e.active && z.cfg.slowMult){ e.slowUntil = elapsedMs + (z.cfg.slowMs || 1200) * globalDurationMult; e.slowMult = z.cfg.slowMult; }
+        });
       }
+      if (elapsedMs >= z.until){ z.img.destroy(); markZones.splice(i, 1); }
     }
   }
   function fireMarkZone(weaponId, time){
@@ -1599,7 +1625,7 @@
     const y = target.heavy ? target.y : target.y + (Math.random() - 0.5) * 90;
     const img = scene.add.image(x, y, 'tex-ring').setTint(color).setAlpha(0.5).setScale(cfg.radius / 50).setDepth(-4);
     scene.tweens.add({ targets: img, alpha: 0.22, yoyo: true, repeat: -1, duration: 600 });
-    markZones.push({ x: x, y: y, radius: cfg.radius, amp: cfg.amp, until: elapsedMs + cfg.duration, img: img });
+    markZones.push({ x: x, y: y, radius: cfg.radius, amp: cfg.amp, cfg: cfg, nextTick: elapsedMs, until: elapsedMs + cfg.duration, img: img });
   }
 
   function applyAreaHit(e, cfg, color){
@@ -1790,7 +1816,7 @@
           }
           if (Math.abs(perp) > cfg.halfWidth) return;
           const pct = e.heavy ? (cfg.pctHeavy || 0.1) : (cfg.pctMaxHp || 0.5);
-          damageEnemy(e, (e.maxHp || ENEMY_BASE_HP) * pct * dmgMult(), color);
+          damageEnemy(e, (e.maxHp || ENEMY_BASE_HP) * pct * pctFalloff(e) * dmgMult(), color);
         });
         spawnBurst(ox + cosA * length * 0.5, oy + sinA * length * 0.5, color, 18);
         scene.cameras.main.shake(260, 0.006);
@@ -2490,11 +2516,13 @@
   // Разряд смерти: цепь бьёт из точки, где враг только что умер. Глубина ограничена —
   // иначе цепь, добившая соседа, порождает новую цепь, и так до переполнения стека.
   let deathSparkDepth = 0;
+  let lastDeathSparkAt = -9999;
   function maybeDeathSpark(x, y){
     if (evolved.lightning === undefined) return;
     const evo = WEAPONS.lightning.evolutions[evolved.lightning];
     if (!evo || evo.type !== 'deathspark') return;
     if (deathSparkDepth >= 2) return;
+    if (deathSparkDepth === 0){ if (elapsedMs - lastDeathSparkAt < 220) return; lastDeathSparkAt = elapsedMs; }
     const cfg = evo.level6;
     let best = null, bestD = cfg.chainRadius;
     enemies.children.each((e) => {
@@ -2621,7 +2649,7 @@
     scene.tweens.add({ targets: wave, scale: Math.hypot(cam.width, cam.height) / 40, alpha: 0, duration: 620, onComplete: () => wave.destroy() });
     enemies.children.each((e) => {
       if (!e.active || e.charmedUntil) return;
-      if (e.heavy) damageEnemy(e, (e.maxHp || ENEMY_BASE_HP) * (cfg.pctHeavy || 0.3) * dmgMult(), color);
+      if (e.heavy) damageEnemy(e, (e.maxHp || ENEMY_BASE_HP) * (cfg.pctHeavy || 0.3) * pctFalloff(e) * dmgMult(), color);
       else damageEnemy(e, e.hp + 1, color);
     });
   }
@@ -2747,9 +2775,12 @@
 
   // Урон заклинания = плоский + доля от макс. HP цели (для Лавы/Металла/Монументов).
   // Считается на цель, потому что процент зависит от конкретного врага.
+  // §9/§11: процент от макс. HP цели слабеет по категориям — flat остаётся главным DPS.
+  const PCT_FALLOFF = { normal: 1.0, enhanced: 0.9, elite: 0.7, miniboss: 0.5, boss: 0.35, elder: 0.35 };
+  function pctFalloff(e){ return PCT_FALLOFF[e && e.tier] || 1; }
   function spellDamage(cfg, enemy){
     const flat = cfg.dmg || 0;
-    const pct = cfg.pctMaxHp ? (enemy.maxHp || enemy.hp) * cfg.pctMaxHp : 0;
+    const pct = cfg.pctMaxHp ? (enemy.maxHp || enemy.hp) * cfg.pctMaxHp * pctFalloff(enemy) : 0;
     return (flat + pct) * dmgMult();
   }
 
@@ -3592,6 +3623,18 @@
     } catch (e) {}
   }
 
+  function updateNukeChip(time){
+    const chip = document.getElementById('nukeChip');
+    if (!owned.blast || evolved.blast !== 0){ chip.hidden = true; return; }
+    chip.hidden = false;
+    const nc = currentCfg('blast');
+    const ncd = Math.max(nc.cooldown * globalCooldownMult, Math.min(nc.cooldown, CD_FLOOR.ultra));
+    const left = ((lastFiredAt.blast || -ncd) + ncd) - time;
+    const v = document.getElementById('nukeVal');
+    if (left <= 0){ v.textContent = 'ГОТОВ'; chip.classList.add('ready'); }
+    else { v.textContent = Math.ceil(left / 1000) + 'с'; chip.classList.remove('ready'); }
+  }
+
   function doGameOver(){
     running = false;
     sendRun('death');
@@ -3622,6 +3665,7 @@
       run.timeline.push({ t: Math.round(runMs), lvl: level, kills: killCount, hp: Math.round(Math.max(0, playerHp)), dmg: Math.round(run.dmgDealt), en: enemies.countActive(true) });
     }
     document.getElementById('timer').textContent = formatTime(runMs);
+    updateNukeChip(time);
 
     if (!bossActive && !riftFight && !riftNode && runMs >= nextRiftAt){
       nextRiftAt = runMs + RIFT_INTERVAL_MS;
@@ -3775,7 +3819,8 @@
       // Предметы режут перезарядку, но не ниже времени жизни эффекта: иначе новая
       // копия долгой области появляется поверх недогоревшей старой. Если базовый откат
       // и так короче длительности — это осознанная механика (Лава), её не трогаем.
-      let cd = cfg.cooldown * globalCooldownMult;
+      const cdCls = (evo && CD_CLASS[evo.name]) || CD_CLASS[id] || 'medium';
+      let cd = Math.max(cfg.cooldown * globalCooldownMult, Math.min(cfg.cooldown, CD_FLOOR[cdCls]));
       if (cfg.duration) cd = Math.max(cd, Math.min(cfg.cooldown, cfg.duration));
       if (time - (lastFiredAt[id] || 0) > cd){
         lastFiredAt[id] = time;
