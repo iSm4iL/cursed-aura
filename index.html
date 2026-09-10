@@ -1099,6 +1099,7 @@
   let pauseReason = null;
 
   let bossActive = false;
+  let arenaRewardLevel = 1;   // уровень на СТАРТ арены — награда считается от него, не от текущего
   let bossCenter = { x: 0, y: 0 };
   let arenaBosses = [];
   let riftNode = null;
@@ -1122,7 +1123,7 @@
     const base = WEAPONS[id].evolutions[evolved[id]].level6;
     const lv = evoLevel[id] || WEAPON_MAX_LEVEL;
     if (lv <= WEAPON_MAX_LEVEL) return base;
-    const key = id + ':' + lv;
+    const key = id + ':' + evolved[id] + ':' + lv;   // эволюция входит в ключ — иначе кэш путал бы ветки
     if (evoCfgCache[key]) return evoCfgCache[key];
     const k = lv - WEAPON_MAX_LEVEL;
     const scaled = Object.assign({}, base);
@@ -1478,11 +1479,16 @@
     e.charmedUntil = null;
     e.inArena = false;
     if (t.slamMs) e.slamAt = elapsedMs + t.slamMs;
-    // Враг не выскакивает щелчком: короткое проявление из воздуха. Пока идёт
-    // анимация, он уже живой, но визуально понятно, что он только что пришёл.
+    enemyAppearFx(e);
+    return e;
+  }
+
+  // Общая анимация появления — и для нового врага, и для переработанного
+  // (recycleEnemy переставляет тело дальнего врага в новую точку; без этой
+  // анимации переезд выглядит как телепорт прямо за спиной игрока).
+  function enemyAppearFx(e){
     e.setAlpha(0).setScale(0.4);
     scene.tweens.add({ targets: e, alpha: 1, scale: 1, duration: 260, ease: 'Back.easeOut' });
-    return e;
   }
 
   function spawnEnemyAtRing(tier){
@@ -1502,6 +1508,8 @@
     e.slowMult = 1;
     e.charmedUntil = null;
     e.clearTint();
+    scene.tweens.killTweensOf(e);
+    enemyAppearFx(e);
   }
 
   // Сколько врагов может появиться за один тик спавна. Обычно один, но если поле
@@ -2731,7 +2739,7 @@
     // Мини-босс и босс дают долю от опыта, нужного до следующего уровня; остальные —
     // кристалл своего размера. Опыт с арены собирается как обычно, по орбам.
     if (tier.xpPct){
-      const reward = Math.max(xpNeeded(level) * tier.xpPct, tier.xpMin || 0);
+      const reward = Math.max(xpNeeded(arenaRewardLevel) * tier.xpPct, tier.xpMin || 0);
       spawnXpOrb(ex, ey, Math.round(reward * xpValueMult), 'large');
     } else {
       spawnXpOrb(ex, ey, Math.round(XP_ORBS[tier.orb].value * xpValueMult * xpScale()), tier.orb);
@@ -3357,6 +3365,7 @@
 
   function triggerBoss(){
     bossActive = true;
+    arenaRewardLevel = level;
     // Центр арены смещён вперёд по бегу: игрок оказывается у ближней кромки, а не
     // в середине. Тогда «вошёл с запада — угроза с востока» работает буквально:
     // боссы и подкрепление разворачиваются на противоположной от игрока стороне,
