@@ -338,6 +338,30 @@
   }
   .info-btn:hover{ border-color: var(--gold); color: var(--gold); }
   .detailcard{ width: min(460px, 94vw); text-align: left; }
+  .fusion-row{
+    border-color: var(--gold);
+    background: linear-gradient(90deg, #2a2313, #0e1120);
+  }
+  .fusion-row .name{ color: var(--gold); letter-spacing: 0.04em; }
+  .fusion-from{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    text-align: center;
+    padding: 8px 0 2px;
+  }
+  .fusion-actions{ display: flex; gap: 10px; margin-top: 18px; }
+  .fusion-yes, .fusion-no{
+    flex: 1;
+    padding: 11px 0;
+    border-radius: 8px;
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .fusion-yes{ background: var(--gold); border: none; color: #14100a; }
+  .fusion-no{ background: transparent; border: 1px solid var(--edge); color: var(--text-dim); }
   .detail-desc{
     font-size: 13px;
     color: var(--text-dim);
@@ -461,6 +485,19 @@
   </div>
 </div>
 
+<div class="overlay" id="fusionOverlay">
+  <div class="card detailcard">
+    <h1 id="fTitle">Слияние</h1>
+    <div class="fusion-from" id="fFrom"></div>
+    <div class="detail-desc" id="fDesc"></div>
+    <div id="fStats"></div>
+    <div class="fusion-actions">
+      <button class="fusion-yes" id="fDo">Слить</button>
+      <button class="fusion-no" id="fBack">Назад</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="detailOverlay">
   <div class="card detailcard">
     <h1 id="dTitle">Заклинание</h1>
@@ -507,6 +544,11 @@
   const ENEMY_BASE_HP = 200;
   const ENEMY_CONTACT_DAMAGE = 10;
   const ENEMY_CONTACT_COOLDOWN = 700;
+  // Кулдаун контактного урона общий на всех врагов, иначе толпа убивала бы мгновенно.
+  // Но и обратная крайность неверна: 80 врагов вплотную не должны бить как один. Урон
+  // одного удара растёт от того, сколько тел реально навалилось.
+  const CONTACT_STACK_STEP = 0.07;
+  const CONTACT_STACK_MAX = 2.5;
   const ENEMY_SPAWN_RADIUS = 620;
   const ENEMY_LEASH_RADIUS = 1300;
 
@@ -526,6 +568,12 @@
   // чтобы после ошибки можно было отыграться, но не стоять в толпе бесконечно.
   const HP_ORB_CHANCE = { normal: 0.030, enhanced: 0.10, elite: 0.20, miniboss: 1, boss: 0.5 };
   const HP_ORB_HEAL_PCT = 0.12;
+  // Шанс с убийства сам по себе превращается в бесконечное лечение, когда билд убивает
+  // десятками в секунду: 3% от 50 убийств — это полтора кристалла в секунду. Поэтому
+  // сверх шанса стоит глобальный интервал — лечение остаётся спасением после ошибки,
+  // а не заменой умению уворачиваться.
+  const HP_ORB_MIN_INTERVAL_MS = 9000;
+  let lastHpOrbAt = -99999;
 
   // Размер кристалла сразу показывает, с кого он упал.
   // Опыт за убийство растёт вместе с силой врагов: иначе к третьей минуте убийство
@@ -549,22 +597,26 @@
   // правка тянула за собой всю шкалу. Точки — [мс забега, множитель], между ними линейно.
   // Первые две минуты сознательно мягкие: игрок должен успевать убивать, собирать опыт
   // и возвращаться за брошенными кристаллами, а не бежать без остановки.
-  const ENEMY_HP_CURVE    = [[0, 0.42], [60000, 0.58], [120000, 0.82], [180000, 1.15], [360000, 2.3], [600000, 4.1], [900000, 6.4]];
-  const ENEMY_DMG_CURVE   = [[0, 0.60], [60000, 0.72], [120000, 0.88], [180000, 1.05], [360000, 1.7], [600000, 2.5], [900000, 3.4]];
-  const ENEMY_SPEED_CURVE = [[0, 0.44], [60000, 0.50], [120000, 0.60], [240000, 0.75], [420000, 0.92], [720000, 1.15]];
-  const ENEMY_CAP_CURVE   = [[0, 40], [60000, 85], [120000, 145], [180000, 210], [300000, 320], [480000, 430], [720000, 520]];
-  const SPAWN_MS_CURVE    = [[0, 1200], [60000, 760], [120000, 470], [180000, 320], [300000, 180], [480000, 120], [720000, 95]];
+  const ENEMY_HP_CURVE    = [[0, 0.42], [60000, 0.58], [120000, 0.82], [180000, 1.15], [360000, 2.3], [600000, 4.4], [900000, 7.6], [1200000, 12.0], [1500000, 18.0], [1800000, 26.0]];
+  const ENEMY_DMG_CURVE   = [[0, 0.60], [60000, 0.72], [120000, 0.88], [180000, 1.05], [360000, 1.7], [600000, 2.6], [900000, 3.5], [1200000, 4.4], [1500000, 5.6], [1800000, 7.0]];
+  const ENEMY_SPEED_CURVE = [[0, 0.48], [60000, 0.55], [120000, 0.64], [240000, 0.78], [420000, 0.95], [720000, 1.18], [1080000, 1.40], [1500000, 1.62]];
+  const ENEMY_CAP_CURVE   = [[0, 40], [60000, 85], [120000, 145], [180000, 210], [300000, 320], [480000, 430], [720000, 520], [1200000, 600], [1800000, 680]];
+  const SPAWN_MS_CURVE    = [[0, 1200], [60000, 780], [120000, 520], [180000, 390], [300000, 250], [480000, 150], [720000, 100], [1200000, 62], [1800000, 45]];
   // Доля усиленных в обычной волне. Рядовые обязаны оставаться основой толпы даже
   // в поздней игре, поэтому доля растёт медленно и упирается в потолок.
-  const ENHANCED_SHARE_CURVE = [[0, 0], [30000, 0.03], [90000, 0.06], [180000, 0.10], [300000, 0.16], [600000, 0.24], [900000, 0.28]];
+  const ENHANCED_SHARE_CURVE = [[0, 0], [30000, 0.03], [90000, 0.06], [180000, 0.10], [300000, 0.16], [600000, 0.26], [900000, 0.32], [1500000, 0.38]];
 
-  const MAX_ENEMIES_HARD = 520;                  // потолок ради производительности
+  const MAX_ENEMIES_HARD = 700;                  // потолок ради производительности
   const ENEMY_LEVEL_SCALING = 0.02;              // +2% HP за уровень игрока
-  const WAVE_HP_STEP = 0.22;                     // ступень после каждой зачищенной арены
-  const WAVE_DMG_STEP = 0.14;
-  const WAVE_SPEED_STEP = 0.04;
-  const WAVE_DENSITY_STEP = 0.16;
-  const ENEMY_SPEED_MAX_MULT = 1.55;             // потолок: враг не должен догонять игрока
+  // Ступень после каждой зачищенной арены. Шаг НАРАСТАЮЩИЙ (waveLevel^WAVE_STEP_POW):
+  // первые арены почти не давят, а к 20-й минуте накопленный множитель уже основной
+  // источник сложности. Плоский шаг делал 4-ю минуту стеной, а 20-ю всё равно лёгкой.
+  const WAVE_STEP_POW = 1.5;
+  const WAVE_HP_STEP = 0.16;
+  const WAVE_DMG_STEP = 0.10;
+  const WAVE_SPEED_STEP = 0.03;
+  const WAVE_DENSITY_STEP = 0.11;
+  const ENEMY_SPEED_MAX_MULT = 1.75;             // потолок: враг не должен догонять игрока
 
   function sampleCurve(points, t){
     if (t <= points[0][0]) return points[0][1];
@@ -577,7 +629,7 @@
     return points[points.length - 1][1];
   }
 
-  function waveMult(step){ return 1 + waveLevel * step; }
+  function waveMult(step){ return 1 + step * Math.pow(waveLevel, WAVE_STEP_POW); }
   function enemyHpMult(){
     return sampleCurve(ENEMY_HP_CURVE, runMs) * (1 + level * ENEMY_LEVEL_SCALING) * waveMult(WAVE_HP_STEP);
   }
@@ -702,7 +754,7 @@
       evolutions: [
         { name: 'Залп стрел', desc: '10 огненных стрел разлетаются во все стороны, каждая оставляет след', type: 'radialvolley', level6: { count: 10, dmg: 40, pierce: 1, cooldown: 2600, stagger: 175, trailDmg: 10, trailTicks: 3, trailGap: 26, tickMs: 380 } },
         { name: 'Драконьи стрелы', desc: 'Две огромные стрелы уходят вперёд и назад, прошивая насквозь всех на пути', type: 'dragon', level6: { dmg: 280, speed: 620, cooldown: 3600, tex: 'tex-dragon', halfThickness: 190, halfLength: 30, fromPlayer: true } },
-        { name: 'Солнце', desc: 'Солнце висит над тобой и волнами выжигает всё вокруг', type: 'aura', level6: { dmg: 42, radius: 180, tickMs: 460, duration: 3600, cooldown: 3600 } }
+        { name: 'Солнце', desc: 'Солнце висит над тобой и волнами выжигает всё вокруг', type: 'aura', color: 0xffd93b, level6: { dmg: 42, radius: 180, tickMs: 460, duration: 3600, cooldown: 3600 } }
       ]
     },
     lightning: {
@@ -811,6 +863,47 @@
       ]
     }
   };
+  // ---- Слияния: две эволюции 10 уровня складываются в одну новую способность.
+  // Таблица расширяемая: чтобы добавить комбинацию, достаточно дописать сюда запись
+  // и заклинание в WEAPONS с hidden:true (оно кастуется, но никогда не предлагается
+  // в обычном выборе). Слияние доступно только после третьей арены — там открывается
+  // прокачка эволюций до 10.
+  const FUSIONS = {
+    frostwaste: {
+      name: 'Ледяная пустыня', result: 'fz_waste',
+      need: [{ id: 'fire', evo: 2 }, { id: 'frost', evo: 0 }],
+      desc: 'Солнце промерзает: вокруг тебя навсегда ложится ледяная пустошь. Она жжёт холодом, почти останавливает всех внутри и делает их уязвимее к любому урону.'
+    },
+    skystrike: {
+      name: 'Небесный удар', result: 'sk_strike',
+      need: [{ id: 'blast', evo: 2 }, { id: 'lightning', evo: 1 }],
+      desc: 'Ракетный залп и небесная артиллерия бьют одним приказом: ракеты уходят по целям, а следом в тех же точках встают молнии.'
+    },
+    avalanche: {
+      name: 'Обвал', result: 'av_fall',
+      need: [{ id: 'wave', evo: 0 }, { id: 'earth', evo: 0 }],
+      desc: 'Волна поднимает и роняет каменный вал: тяжёлые удары по всей округе, всех задетых глушит.'
+    }
+  };
+  const FUSION_IDS = Object.keys(FUSIONS);
+
+  // Результаты слияний. hidden:true — кастуются, но в выборе прокачки не появляются.
+  WEAPONS.fz_waste = {
+    name: 'Ледяная пустыня', color: 0x9fe8ff, type: 'aura', hidden: true,
+    levels: [null, { dmg: 95, radius: 300, tickMs: 380, duration: 6000, cooldown: 6000, slowMult: 0.25, slowMs: 1200, amp: 1.25, summary: 'Постоянная ледяная пустошь вокруг тебя' }],
+    evolutions: []
+  };
+  WEAPONS.sk_strike = {
+    name: 'Небесный удар', color: 0xf5e14a, type: 'skystrike', hidden: true,
+    levels: [null, { dmg: 165, radius: 130, range: 300, speed: 620, count: 12, strikes: 6, chainCount: 3, chainRadius: 130, falloff: [1, 0.55, 0.35], cooldown: 4600, projTex: 'tex-rocket', summary: 'Ракетный залп с добиванием молниями' }],
+    evolutions: []
+  };
+  WEAPONS.av_fall = {
+    name: 'Обвал', color: 0xd9b35c, type: 'multiburst', hidden: true,
+    levels: [null, { count: 7, dmg: 210, radius: 130, freeze: 1600, cooldown: 3200, offset: [60, 260], summary: 'Каменный вал бьёт по всей округе и глушит' }],
+    evolutions: []
+  };
+
   const WEAPON_IDS = Object.keys(WEAPONS);
   const ACTIVE_WEAPON_IDS = WEAPON_IDS.filter((id) => !WEAPONS[id].hidden);
 
@@ -843,6 +936,17 @@
   const LOOT_IDS = Object.keys(LOOT);
   const COMMON_LOOT_IDS = LOOT_IDS.filter((id) => LOOT[id].rarity === 'common');
   const ARTIFACT_LOOT_IDS = LOOT_IDS.filter((id) => LOOT[id].rarity === 'artifact');
+  // Когда всё открыто и прокачано, окно выбора раньше просто переставало появляться —
+  // снаружи это читалось как «опыт перестал приходить». Теперь всегда есть, что взять.
+  const BLESSINGS = {
+    might:  { name: 'Малое благословение силы', desc: '+6% урона всех атак', color: 0xe2495c, apply: () => { globalDmgMult += 0.06; } },
+    haste:  { name: 'Малое благословение спешки', desc: '−3% перезарядка способностей', color: 0x9fe8ff, apply: () => { globalCooldownMult = Math.max(0.5, globalCooldownMult - 0.03); } },
+    life:   { name: 'Малое благословение жизни', desc: '+8 макс. HP и лечение', color: 0xffb9c2, apply: () => { stats.maxHp += 8; playerHp = Math.min(stats.maxHp, playerHp + 8); } },
+    reach:  { name: 'Малое благословение зова', desc: '+10 радиус подбора опыта', color: 0x55d6c2, apply: () => { stats.pickupRadius += 10; } },
+    swift:  { name: 'Малое благословение ветра', desc: '+4 скорость передвижения', color: 0xbfe9ff, apply: () => { stats.moveSpeed += 4; } }
+  };
+  const BLESSING_IDS = Object.keys(BLESSINGS);
+
   const WEAPON_MAX_LEVEL = 5;
   // Второй этаж прокачки: эволюция качается с 5 до 10, но только после третьей арены
   // (9-я минута). До этого эволюция существует, но выше 5 не растёт.
@@ -868,6 +972,12 @@
   ];
 
   function hexColor(n){ return '#' + n.toString(16).padStart(6, '0'); }
+
+  // Эволюция может переопределить цвет базового заклинания (Солнце жёлтое, а не огненное).
+  function weaponColor(id){
+    const evo = evolved[id] !== undefined ? WEAPONS[id].evolutions[evolved[id]] : null;
+    return (evo && evo.color) || WEAPONS[id].color;
+  }
 
   // Общая разметка одной строки выбора: номер (для клавиш 1-4) + цветная иконка-заглушка
   // (первая буква названия на фоне цвета оружия/предмета) + название и описание.
@@ -953,6 +1063,8 @@
 
   let stats;
   let owned, evolved, evoLevel, lootCounts, lastFiredAt;
+  let fusedAway = {};        // исходники слияния больше не кастуются
+  let fusionsTaken = {};
   let evoUpgradesUnlocked = false;
   let globalDmgMult = 1;
   let xpValueMult = 1;
@@ -1144,6 +1256,8 @@
     owned = { fire: 1 };
     evolved = {};
     evoLevel = {};
+    fusedAway = {};
+    fusionsTaken = {};
     evoCfgCache = {};
     evoUpgradesUnlocked = false;
     lootCounts = {};
@@ -1189,6 +1303,7 @@
     paused = false;
     pauseReason = null;
     lastHitAt = -99999;
+    lastHpOrbAt = -99999;
     graceUntil = -99999;
     bossActive = false;
     arenaBosses = [];
@@ -1363,6 +1478,10 @@
     e.charmedUntil = null;
     e.inArena = false;
     if (t.slamMs) e.slamAt = elapsedMs + t.slamMs;
+    // Враг не выскакивает щелчком: короткое проявление из воздуха. Пока идёт
+    // анимация, он уже живой, но визуально понятно, что он только что пришёл.
+    e.setAlpha(0).setScale(0.4);
+    scene.tweens.add({ targets: e, alpha: 1, scale: 1, duration: 260, ease: 'Back.easeOut' });
     return e;
   }
 
@@ -1385,6 +1504,17 @@
     e.clearTint();
   }
 
+  // Сколько врагов может появиться за один тик спавна. Обычно один, но если поле
+  // резко опустело (Термоядерный, зачистка арены), добор идёт пачками по нескольку —
+  // и всё равно постепенно, а не мгновенным восстановлением капа.
+  function spawnBatchSize(){
+    const cap = enemyCap();
+    const alive = enemies.countActive(true);
+    const missing = cap - alive;
+    if (missing <= cap * 0.35) return 1;
+    return Math.min(4, 1 + Math.floor(missing / (cap * 0.35)));
+  }
+
   function spawnOrRecycle(){
     if (bossActive) return;
     if (enemies.countActive(true) >= enemyCap()){
@@ -1396,7 +1526,10 @@
       });
       if (farthest) recycleEnemy(farthest);
     } else {
-      spawnEnemyAtRing(Math.random() < sampleCurve(ENHANCED_SHARE_CURVE, runMs) ? 'enhanced' : 'normal');
+      const n = spawnBatchSize();
+      for (let i = 0; i < n; i++){
+        spawnEnemyAtRing(Math.random() < sampleCurve(ENHANCED_SHARE_CURVE, runMs) ? 'enhanced' : 'normal');
+      }
     }
   }
 
@@ -1428,6 +1561,7 @@
   }
   function updateMarkZones(){
     for (let i = markZones.length - 1; i >= 0; i--){
+      if (markZones[i].follow){ markZones[i].x = player.x; markZones[i].y = player.y; }
       if (elapsedMs >= markZones[i].until){
         markZones[i].img.destroy();
         markZones.splice(i, 1);
@@ -1519,8 +1653,14 @@
   let activeAuras = [];
   function fireAura(weaponId, time){
     const cfg = currentCfg(weaponId);
-    const color = WEAPONS[weaponId].color;
+    const color = weaponColor(weaponId);
     const img = attachToPlayer(scene.add.image(player.x, player.y, 'tex-ring').setTint(color).setAlpha(0.3).setScale(cfg.radius / 50).setDepth(-3));
+    // Аура с amp работает и как зона усиления урона (слияние Ледяной пустыни).
+    if (cfg.amp){
+      while (markZones.length){ markZones[0].img.destroy(); markZones.shift(); }
+      const ring = attachToPlayer(scene.add.image(player.x, player.y, 'tex-ring').setTint(0xffffff).setAlpha(0.12).setScale(cfg.radius / 50).setDepth(-4));
+      markZones.push({ x: player.x, y: player.y, radius: cfg.radius, amp: cfg.amp, until: elapsedMs + cfg.duration, img: ring, follow: true });
+    }
     // Само солнце — отдельный объект над головой, чтобы источник эффекта был виден.
     const core = attachToPlayer(scene.add.image(player.x, player.y, 'tex-bolt').setTint(color).setScale(2.6).setDepth(44), -40);
     scene.tweens.add({ targets: core, scale: 3.1, yoyo: true, repeat: -1, duration: cfg.tickMs, ease: 'Sine.easeInOut' });
@@ -1531,7 +1671,14 @@
       const a = activeAuras[i];
       if (elapsedMs >= a.nextTick){
         a.nextTick = elapsedMs + a.cfg.tickMs;
-        enemiesInRadius(player.x, player.y, a.cfg.radius).forEach((e) => damageEnemy(e, spellDamage(a.cfg, e), a.color));
+        enemiesInRadius(player.x, player.y, a.cfg.radius).forEach((e) => {
+          damageEnemy(e, spellDamage(a.cfg, e), a.color);
+          // Ледяная пустыня: аура может не только жечь, но и морозить.
+          if (e.active && a.cfg.slowMult){
+            e.slowUntil = elapsedMs + (a.cfg.slowMs || 900) * globalDurationMult;
+            e.slowMult = a.cfg.slowMult;
+          }
+        });
         spawnPulseRing(player.x, player.y, a.cfg.radius, a.color);
       }
       if (elapsedMs >= a.until){
@@ -2383,6 +2530,32 @@
   // Термоядерный взрыв: кнопка «очищаю всю карту». Рядовые, усиленные и элитные
   // гибнут целиком; тяжёлые (мини-боссы и боссы) получают долю максимального здоровья,
   // чтобы способность не решала бой с боссом в одиночку. Отсюда и огромная перезарядка.
+  // Небесный удар: ракеты по случайным целям + молнии в тех же местах.
+  function fireSkyStrike(weaponId, time){
+    const cfg = currentCfg(weaponId);
+    const color = weaponColor(weaponId);
+    const reach = (cfg.range || 300) * 1.4;
+    const pool = [];
+    enemies.children.each((e) => {
+      if (e.active && !e.charmedUntil && Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y) <= reach) pool.push(e);
+    });
+    for (let i = 0; i < (cfg.count || 10); i++){
+      scene.time.delayedCall(i * 60, () => {
+        if (!running || paused) return;
+        const t = pool.length ? Phaser.Utils.Array.GetRandom(pool) : null;
+        let tx, ty;
+        if (t && t.active){ tx = t.x + (Math.random() - 0.5) * 50; ty = t.y + (Math.random() - 0.5) * 50; }
+        else { const a = Math.random() * Math.PI * 2, r = (cfg.range || 300) * (0.35 + Math.random() * 0.65); tx = player.x + Math.cos(a) * r; ty = player.y + Math.sin(a) * r; }
+        flyAndBlast(tx, ty, cfg, weaponId, 1.6);
+      });
+    }
+    const starters = getNearestEnemies(cfg.strikes || 5);
+    starters.forEach((st, i) => scene.time.delayedCall(200 + i * 90, () => {
+      if (!running || paused || !st.active) return;
+      walkChain(st, cfg, color);
+    }));
+  }
+
   function fireNukeGlobal(weaponId, time){
     const cfg = currentCfg(weaponId);
     const color = WEAPONS[weaponId].color;
@@ -2564,7 +2737,10 @@
       spawnXpOrb(ex, ey, Math.round(XP_ORBS[tier.orb].value * xpValueMult * xpScale()), tier.orb);
     }
     if (tier.dropsItem) spawnItemDrop(ex, ey);
-    if (Math.random() < (HP_ORB_CHANCE[enemy.tier] || 0)) spawnHpOrb(ex, ey);
+    if (Math.random() < (HP_ORB_CHANCE[enemy.tier] || 0) && elapsedMs - lastHpOrbAt >= HP_ORB_MIN_INTERVAL_MS){
+      lastHpOrbAt = elapsedMs;
+      spawnHpOrb(ex, ey);
+    }
     bloodCharge += 1;
     maybeSpawnClone();
     if (enemy.arenaFoe && bossActive && arenaEnemiesLeft() === 0) endBossFight();
@@ -2711,13 +2887,23 @@
       return;
     }
 
-    playerHp = Math.max(0, playerHp - enemy.contactDamage);
+    playerHp = Math.max(0, playerHp - enemy.contactDamage * contactStack());
     maybeEmergencyHeal();
     if (playerHp <= 0) doGameOver();
   }
 
   // "Фляга здоровья" — присутствие предмета в инвентаре включает эту способность целиком,
   // без выбора уровня; может спасти от смертельного удара, если HP уже упало до 0 в этот же кадр.
+  // Во сколько раз больнее бьёт куча, чем одиночный враг.
+  function contactStack(){
+    let n = 0;
+    const reach = ENEMY_STOP_DIST + 16;
+    enemies.children.each((e) => {
+      if (e.active && !e.charmedUntil && Phaser.Math.Distance.Between(e.x, e.y, player.x, player.y) <= reach) n += 1;
+    });
+    return Math.min(CONTACT_STACK_MAX, 1 + Math.max(0, n - 1) * CONTACT_STACK_STEP);
+  }
+
   function maybeEmergencyHeal(){
     if (!lootCounts.potion) return;
     if (playerHp > stats.maxHp * 0.25) return;
@@ -2768,11 +2954,11 @@
   // сразу после того, как заклинание достигло 5 уровня (см. chooseCandidate).
   function collectCandidates(){
     const news = ACTIVE_WEAPON_IDS.filter((id) => !owned[id]).map((id) => ({ id, kind: 'new' }));
-    const upgrades = ACTIVE_WEAPON_IDS.filter((id) => owned[id] && owned[id] < WEAPON_MAX_LEVEL).map((id) => ({ id, kind: 'upgrade' }));
+    const upgrades = ACTIVE_WEAPON_IDS.filter((id) => owned[id] && !fusedAway[id] && owned[id] < WEAPON_MAX_LEVEL).map((id) => ({ id, kind: 'upgrade' }));
     // Второй этаж: качать эволюции можно только после третьей арены.
     if (evoUpgradesUnlocked){
       ACTIVE_WEAPON_IDS.forEach((id) => {
-        if (evolved[id] !== undefined && (evoLevel[id] || WEAPON_MAX_LEVEL) < EVO_MAX_LEVEL) upgrades.push({ id, kind: 'evo' });
+        if (evolved[id] !== undefined && !fusedAway[id] && (evoLevel[id] || WEAPON_MAX_LEVEL) < EVO_MAX_LEVEL) upgrades.push({ id, kind: 'evo' });
       });
     }
     return { news, upgrades };
@@ -2780,6 +2966,48 @@
 
   function candidateKey(c){ return c.id + ':' + c.kind; }
   
+
+  // Слияние доступно, если обе исходные эволюции взяты и докачаны до 10.
+  function fusionReady(fid){
+    if (fusionsTaken[fid]) return false;
+    return FUSIONS[fid].need.every((r) => evolved[r.id] === r.evo && (evoLevel[r.id] || WEAPON_MAX_LEVEL) >= EVO_MAX_LEVEL && !fusedAway[r.id]);
+  }
+  function availableFusions(){ return FUSION_IDS.filter(fusionReady); }
+
+  function applyFusion(fid){
+    const f = FUSIONS[fid];
+    fusionsTaken[fid] = true;
+    f.need.forEach((r) => { fusedAway[r.id] = true; });   // исходники замолкают
+    owned[f.result] = 1;
+    pendingLevelUps -= 1;
+    closeFusion();
+    document.getElementById('levelUpOverlay').classList.remove('show');
+    showToast('Слияние: ' + f.name);
+    scene.cameras.main.flash(400, 200, 240, 255);
+    if (pendingLevelUps > 0) openLevelUp(); else resumeGame();
+  }
+
+  function openFusion(fid){
+    const f = FUSIONS[fid];
+    const cfg = WEAPONS[f.result].levels[1];
+    window.__pendingFusion = fid;
+    document.getElementById('fTitle').textContent = f.name;
+    document.getElementById('fFrom').textContent = f.need
+      .map((r) => WEAPONS[r.id].evolutions[r.evo].name).join('  +  ');
+    document.getElementById('fDesc').textContent = f.desc;
+    document.getElementById('fStats').innerHTML = STAT_ROWS
+      .filter((r) => cfg[r[0]] !== undefined && cfg[r[0]] !== 0)
+      .map((r) => '<div class="detail-row"><span>' + r[1] + '</span><span>' + r[2](cfg[r[0]]) + '</span></div>').join('');
+    document.getElementById('fusionOverlay').classList.add('show');
+  }
+  function closeFusion(){
+    document.getElementById('fusionOverlay').classList.remove('show');
+    window.__pendingFusion = null;
+  }
+
+  function blessingChoices(n){
+    return Phaser.Utils.Array.Shuffle(BLESSING_IDS.slice()).slice(0, n).map((id) => ({ id, kind: 'blessing' }));
+  }
 
   function buildChoices(n){
     const { news, upgrades } = collectCandidates();
@@ -2796,22 +3024,26 @@
       used.add(candidateKey(pick));
       result.push(pick);
     }
+    // Добираем благословениями, если оружейных вариантов не хватило.
+    if (result.length < n) result.push(...blessingChoices(n - result.length));
     return result;
   }
 
   function evoName(id){ return WEAPONS[id].evolutions[evolved[id]].name; }
   function candidateTitle(c){
+    if (c.kind === 'blessing') return BLESSINGS[c.id].name;
     if (c.kind === 'new') return WEAPONS[c.id].name + ' (новое)';
     if (c.kind === 'evo') return evoName(c.id) + ' ур. ' + ((evoLevel[c.id] || WEAPON_MAX_LEVEL) + 1);
     return WEAPONS[c.id].name + ' ур. ' + (owned[c.id] + 1);
   }
   function candidateDesc(c){
+    if (c.kind === 'blessing') return BLESSINGS[c.id].desc;
     if (c.kind === 'new') return WEAPONS[c.id].levels[1].summary;
     if (c.kind === 'evo') return '+' + Math.round(EVO_POWER_STEP * 100) + '% сила, −' + Math.round(EVO_COOLDOWN_STEP * 100) + '% перезарядка';
     return describeUpgrade(c.id, owned[c.id] + 1);
   }
-  function candidateColor(c){ return WEAPONS[c.id].color; }
-  function candidateLetter(c){ return WEAPONS[c.id].name.charAt(0); }
+  function candidateColor(c){ return c.kind === 'blessing' ? BLESSINGS[c.id].color : weaponColor(c.id); }
+  function candidateLetter(c){ return (c.kind === 'blessing' ? BLESSINGS[c.id].name : WEAPONS[c.id].name).charAt(0); }
 
   function openLevelUp(){
     const choices = buildChoices(CHOICES_PER_LEVELUP);
@@ -2824,11 +3056,25 @@
     document.querySelector('#levelUpOverlay h1').textContent = 'Пробуждение силы';
     const container = document.getElementById('upgradeChoices');
     container.innerHTML = '';
+    // Доступное слияние показывается первой строкой и только открывает предпросмотр —
+    // само по себе оно ничего не активирует.
+    availableFusions().forEach((fid) => {
+      const f = FUSIONS[fid];
+      const row = document.createElement('button');
+      row.className = 'upgrade-btn fusion-row';
+      row.innerHTML = '<span class="num">★</span>' +
+        '<span class="upgrade-icon" style="background:#ffd93b">С</span>' +
+        '<span class="upgrade-text"><span class="name">СЛИЯНИЕ · ' + f.name + '</span>' +
+        '<span class="desc">' + f.need.map((r) => WEAPONS[r.id].evolutions[r.evo].name).join(' + ') + ' — посмотреть, что получится</span></span>';
+      row.onclick = () => openFusion(fid);
+      container.appendChild(row);
+    });
     choices.forEach((c, i) => {
       const btn = document.createElement('button');
       btn.className = 'upgrade-btn';
       btn.innerHTML = choiceRowHtml(i + 1, candidateColor(c), candidateLetter(c), candidateTitle(c), candidateDesc(c));
       btn.onclick = () => chooseCandidate(c);
+      if (c.kind === 'blessing'){ container.appendChild(btn); return; }
       const info = document.createElement('button');
       info.className = 'info-btn';
       info.textContent = '?';
@@ -2864,6 +3110,13 @@
   }
 
   function chooseCandidate(c){
+    if (c.kind === 'blessing'){
+      BLESSINGS[c.id].apply();
+      pendingLevelUps -= 1;
+      document.getElementById('levelUpOverlay').classList.remove('show');
+      if (pendingLevelUps > 0) openLevelUp(); else resumeGame();
+      return;
+    }
     if (c.kind === 'new') owned[c.id] = 1;
     else if (c.kind === 'upgrade') owned[c.id] += 1;
     else if (c.kind === 'evo') evoLevel[c.id] = (evoLevel[c.id] || WEAPON_MAX_LEVEL) + 1;
@@ -2925,6 +3178,7 @@
   }
 
   function toggleManualPause(){
+    if (document.getElementById('fusionOverlay').classList.contains('show')){ closeFusion(); return; }
     if (document.getElementById('detailOverlay').classList.contains('show')){ closeDetails(); return; }
     if (!running || (pauseReason && pauseReason !== 'manual')) return;
     if (paused) closeManualPause(); else openManualPause();
@@ -2938,7 +3192,7 @@
     document.getElementById('pHp').textContent = Math.round(Math.max(0, playerHp)) + '/' + stats.maxHp;
     document.getElementById('pSpeed').textContent = String(stats.moveSpeed);
     document.getElementById('pWave').textContent = String(waveLevel + 1);
-    const skillsHtml = ACTIVE_WEAPON_IDS.filter((id) => owned[id]).map((id) => {
+    const skillsHtml = WEAPON_IDS.filter((id) => owned[id] && !fusedAway[id]).map((id) => {
       const label = evolved[id] !== undefined
         ? WEAPONS[id].evolutions[evolved[id]].name + ' · ур. ' + (evoLevel[id] || WEAPON_MAX_LEVEL)
         : ('ур. ' + owned[id]);
@@ -3374,8 +3628,8 @@
       if (time - b.spawnedAt > b.lifespan) b.destroy();
     });
 
-    ACTIVE_WEAPON_IDS.forEach((id) => {
-      if (!owned[id]) return;
+    WEAPON_IDS.forEach((id) => {
+      if (!owned[id] || fusedAway[id]) return;
       const cfg = currentCfg(id);
       // Эволюция может поменять не только цифры, но и сам тип поведения (например,
       // "Цунами" превращает направленную волну в круговой взрыв с отбрасыванием).
@@ -3417,6 +3671,7 @@
         else if (type === 'novablast') fireNukeBlast(id, time);
         else if (type === 'novaself') fireNovaSelf(id, time);
         else if (type === 'nukeglobal') fireNukeGlobal(id, time);
+        else if (type === 'skystrike') fireSkyStrike(id, time);
         else if (type === 'monuments') fireMonuments(id, time);
         else if (type === 'pull') firePull(id, time);
         else if (type === 'volleyburst') fireRocketVolley(id, time);
@@ -3499,6 +3754,8 @@
   document.getElementById('pauseOverlay').onclick = () => { if (pauseReason === 'manual') closeManualPause(); };
   document.getElementById('deathOverlay').onclick = () => { if (!running) scene.scene.restart(); };
   document.getElementById('detailOverlay').onclick = closeDetails;
+  document.getElementById('fDo').onclick = () => { if (window.__pendingFusion) applyFusion(window.__pendingFusion); };
+  document.getElementById('fBack').onclick = closeFusion;
   document.getElementById('hint').textContent = HINT_DEFAULT;
 
   const config = {
