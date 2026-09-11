@@ -63,9 +63,9 @@
         { count: 5, dmg: 100, radius: 98, freeze: 900, cooldown: 850, offset: [40, 190] }
       ],
       evolutions: [
-        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек, каждая прошивает линию врагов насквозь', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 999, life: 1500, cooldown: 2800, scale: 1.7, charge: 600, projTex: 'tex-icicle' } },
+        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек, каждая прошивает линию врагов насквозь', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 999, life: 1500, cooldown: 2800, scale: 2.3, charge: 600, projTex: 'tex-icicle' } },
         { name: 'Чёрный лёд', desc: 'Постоянная область вокруг тебя, ощутимо замедляет врагов', type: 'slowarea', level6: { radius: 210, slowMult: 0.65, duration: 2000, cooldown: 1500 } },
-        { name: 'Иний', desc: 'Иней оседает на крупном враге: зона замедляет, все в ней получают на 20% больше урона и понемногу тают', type: 'markzone', level6: { radius: 150, amp: 1.2, slowMult: 0.75, slowMs: 1200, pctMaxHp: 0.015, tickMs: 900, duration: 5000, cooldown: 4000 } }
+        { name: 'Иний', desc: 'Иний оседает на крупном враге: зона замедляет, все в ней получают на 20% больше урона и понемногу тают', type: 'markzone', level6: { radius: 150, amp: 1.2, slowMult: 0.75, slowMs: 1200, pctMaxHp: 0.015, tickMs: 900, duration: 5000, cooldown: 4000 } }
       ]
     },
     fire: {
@@ -86,15 +86,15 @@
     lightning: {
       name: 'Молния', color: 0xf5e14a, element: 'lightning', type: 'chain',
       levels: [null,
-        { dmg: 42, cooldown: 1900, chainCount: 3, chainRadius: 150, falloff: CHAIN_FALLOFF, summary: 'Молния бьёт ближайшего врага и перескакивает по цепи на соседних' },
-        { dmg: 55, cooldown: 1750, chainCount: 4, chainRadius: 160, falloff: CHAIN_FALLOFF },
-        { dmg: 70, cooldown: 1600, chainCount: 5, chainRadius: 170, falloff: CHAIN_FALLOFF },
-        { dmg: 88, cooldown: 1450, chainCount: 6, chainRadius: 185, falloff: CHAIN_FALLOFF },
-        { dmg: 108, cooldown: 1350, chainCount: 7, chainRadius: 200, falloff: CHAIN_FALLOFF }
+        { dmg: 42, cooldown: 1500, chainCount: 3, chainRadius: 150, falloff: CHAIN_FALLOFF, summary: 'Молния бьёт ближайшего врага и перескакивает по цепи на соседних' },
+        { dmg: 55, cooldown: 1400, chainCount: 4, chainRadius: 160, falloff: CHAIN_FALLOFF },
+        { dmg: 70, cooldown: 1280, chainCount: 5, chainRadius: 170, falloff: CHAIN_FALLOFF },
+        { dmg: 88, cooldown: 1150, chainCount: 6, chainRadius: 185, falloff: CHAIN_FALLOFF },
+        { dmg: 108, cooldown: 1050, chainCount: 7, chainRadius: 200, falloff: CHAIN_FALLOFF }
       ],
       evolutions: [
         { name: 'Разряд смерти', desc: 'Каждый убитый враг лопается разрядом: цепь бьёт по тем, кто стоял рядом', type: 'deathspark', level6: { dmg: 55, chainCount: 3, chainRadius: 145, falloff: [1, 0.6, 0.4], cooldown: 999999 } },
-        { name: 'Гнев небес', desc: '8 молний бьют с неба по случайным врагам на экране, каждая расходится цепью', type: 'multichain', level6: { dmg: 260, cooldown: 6500, chainCount: 5, chainRadius: 260, strikes: 8, falloff: [1, 0.75, 0.55, 0.4, 0.3] } },
+        { name: 'Гнев небес', desc: '8 молний бьют с неба по случайным врагам на экране, каждая расходится дальней цепью', type: 'multichain', level6: { dmg: 340, cooldown: 6500, chainCount: 6, chainRadius: 340, strikes: 8, falloff: [1, 0.8, 0.6, 0.45, 0.35, 0.28] } },
         { name: 'Цепная реакция', desc: 'Каждое другое твоё заклинание дополнительно бьёт цепной молнией', type: 'reactionproc', level6: { dmg: 100, chainCount: 10, chainRadius: 150, falloff: [1, 0.8, 0.65, 0.5, 0.4, 0.3, 0.24, 0.19, 0.15, 0.12] } }
       ]
     },
@@ -109,7 +109,7 @@
       ],
       evolutions: [
         { name: 'Термоядерный взрыв', desc: 'Вспышка стирает с карты всех обычных, усиленных и элитных; боссам сносит треть здоровья', type: 'nukeglobal', level6: { pctHeavy: 0.45, cooldown: 40000 } },
-        { name: 'Имплозия', desc: 'Слабый урон, но мощно стягивает врагов в одну точку', type: 'pull', level6: { dmg: 40, radius: 240, pull: 200, speed: 560, cooldown: 3800 } },
+        { name: 'Имплозия', desc: 'Слабый урон, но мощно стягивает врагов в одну точку вдали от тебя', type: 'pull', level6: { dmg: 40, radius: 300, range: 340, pull: 220, speed: 560, cooldown: 3800 } },
         { name: 'Иерихон', desc: '10 ракет уходят по случайным целям вокруг тебя и рвутся при попадании', type: 'volleyburst', level6: { dmg: 155, radius: 125, range: 280, speed: 600, cooldown: 5500, count: 10, projTex: 'tex-rocket' } }
       ]
     },
@@ -170,7 +170,7 @@
       evolutions: [
         { name: 'Пушка', desc: 'Плотный поток воздуха идёт вперёд, расталкивая всех с дороги', type: 'forwardvolley', level6: { count: 1, dmg: 90, pierce: 8, cooldown: 1600, knockback: 150, scale: 1.5, projTex: 'tex-gust', alpha: 0.55 } },
         { name: 'Разрез', desc: 'Вместо пуль — режущие волны вперёд: узкие у тебя и широкие вдали', type: 'slash', level6: { count: 5, dmg: 120, speed: 560, life: 900, w0: 30, w1: 150, gap: 140, cooldown: 2800 } },
-        { name: 'Святая пуля', desc: 'Тяжёлые очищающие пули: снимают с врагов усиления и бьют сильнее обычных', level6: { count: 5, dmg: 125, pierce: 2, cooldown: 700, dispel: true } }
+        { name: 'Святая пуля', desc: 'Тяжёлые очищающие пули пронзают отряд насквозь и снимают с врагов усиления', level6: { count: 5, dmg: 125, pierce: 8, cooldown: 700, dispel: true } }
       ]
     },
     barrier: {
