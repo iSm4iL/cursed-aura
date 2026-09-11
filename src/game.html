@@ -274,6 +274,7 @@
     width: 100%;
     background: #0e1120;
     border: 1px solid var(--edge);
+    border-left: 3px solid var(--edge);
     border-radius: 8px;
     padding: 8px 12px;
     color: var(--text);
@@ -285,6 +286,28 @@
     gap: 10px;
     transition: border-color 120ms ease, background 120ms ease;
   }
+  /* Редкость артефактов: обычный/необычный/редкий/эпический/легендарный — та же
+     палитра, что в реестре артефактов (60812212), чтобы цвет означал одно и то же. */
+  .upgrade-btn.rarity-common{ border-left-color: #8b8f9e; }
+  .upgrade-btn.rarity-uncommon{ border-left-color: #5fbf7a; }
+  .upgrade-btn.rarity-rare{ border-left-color: #4f9be0; }
+  .upgrade-btn.rarity-epic{ border-left-color: #a06fd9; }
+  .upgrade-btn.rarity-legendary{ border-left-color: #e0a040; box-shadow: 0 0 12px #e0a04030; }
+  .name-row{ display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .rarity-tag{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 7px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .rarity-tag.rarity-common{ color: #8b8f9e; border: 1px solid #8b8f9e; background: #8b8f9e1a; }
+  .rarity-tag.rarity-uncommon{ color: #5fbf7a; border: 1px solid #5fbf7a; background: #5fbf7a1a; }
+  .rarity-tag.rarity-rare{ color: #4f9be0; border: 1px solid #4f9be0; background: #4f9be01a; }
+  .rarity-tag.rarity-epic{ color: #a06fd9; border: 1px solid #a06fd9; background: #a06fd91a; }
+  .rarity-tag.rarity-legendary{ color: #e0a040; border: 1px solid #e0a040; background: #e0a0401a; }
   .upgrade-btn:hover{
     border-color: var(--gold);
     background: #171c30;
@@ -544,7 +567,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.7';
+  const GAME_VERSION = '1.0.8';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -1130,17 +1153,20 @@
 
   // Общая разметка одной строки выбора: номер (для клавиш 1-4) + цветная иконка-заглушка
   // (первая буква названия на фоне цвета оружия/предмета) + название и описание.
-  function choiceRowHtml(num, color, letter, title, desc){
+  function rarityTagHtml(rarity){
+    return rarity ? '<span class="rarity-tag rarity-' + rarity + '">' + RARITY_RU[rarity] + '</span>' : '';
+  }
+  function choiceRowHtml(num, color, letter, title, desc, rarity){
     return '<span class="num">' + num + '</span>' +
       '<span class="upgrade-icon" style="background:' + hexColor(color) + '">' + letter + '</span>' +
-      '<span class="upgrade-text"><span class="name">' + title + '</span><span class="desc">' + desc + '</span></span>';
+      '<span class="upgrade-text"><span class="name-row"><span class="name">' + title + '</span>' + rarityTagHtml(rarity) + '</span><span class="desc">' + desc + '</span></span>';
   }
 
   // Та же строка, но статичная (для инвентаря в паузе, не кликабельная).
-  function staticRowHtml(color, letter, title, desc){
-    return '<div class="upgrade-btn" style="cursor:default">' +
+  function staticRowHtml(color, letter, title, desc, rarity){
+    return '<div class="upgrade-btn' + (rarity ? ' rarity-' + rarity : '') + '" style="cursor:default">' +
       '<span class="upgrade-icon" style="background:' + hexColor(color) + '">' + letter + '</span>' +
-      '<span class="upgrade-text"><span class="name">' + title + '</span><span class="desc">' + desc + '</span></span>' +
+      '<span class="upgrade-text"><span class="name-row"><span class="name">' + title + '</span>' + rarityTagHtml(rarity) + '</span><span class="desc">' + desc + '</span></span>' +
       '</div>';
   }
 
@@ -3119,8 +3145,8 @@
     container.innerHTML = '';
     picks.forEach((id, i) => {
       const btn = document.createElement('button');
-      btn.className = 'upgrade-btn';
-      btn.innerHTML = choiceRowHtml(i + 1, LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name, LOOT[id].desc);
+      btn.className = 'upgrade-btn rarity-' + LOOT[id].rarity;
+      btn.innerHTML = choiceRowHtml(i + 1, LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name, LOOT[id].desc, LOOT[id].rarity);
       btn.onclick = () => chooseItem(id);
       container.appendChild(btn);
     });
@@ -3153,8 +3179,8 @@
     container.innerHTML = '';
     picks.forEach((id, i) => {
       const btn = document.createElement('button');
-      btn.className = 'upgrade-btn';
-      btn.innerHTML = choiceRowHtml(i + 1, LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name, LOOT[id].desc);
+      btn.className = 'upgrade-btn rarity-' + LOOT[id].rarity;
+      btn.innerHTML = choiceRowHtml(i + 1, LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name, LOOT[id].desc, LOOT[id].rarity);
       btn.onclick = () => chooseArtifact(id);
       container.appendChild(btn);
     });
@@ -3547,8 +3573,8 @@
     document.getElementById('pSkills').innerHTML = skillsHtml || '<div class="empty-note">Пока ничего</div>';
 
     const lootHtml = LOOT_IDS.filter((id) => lootCounts[id]).map((id) => {
-      const tag = RARITY_RU[LOOT[id].rarity] + (lootCounts[id] > 1 ? ' ×' + lootCounts[id] : '');
-      return staticRowHtml(LOOT[id].color, LOOT[id].name.charAt(0), LOOT[id].name + ' · ' + tag, LOOT[id].desc);
+      const title = LOOT[id].name + (lootCounts[id] > 1 ? ' ×' + lootCounts[id] : '');
+      return staticRowHtml(LOOT[id].color, LOOT[id].name.charAt(0), title, LOOT[id].desc, LOOT[id].rarity);
     }).join('');
     document.getElementById('pLoot').innerHTML = lootHtml || '<div class="empty-note">Пока ничего</div>';
 
