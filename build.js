@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { minify } = require('terser');
+const { assembleSource } = require('./assemble.js');
 
 const SRC = path.join(__dirname, 'src', 'game.html');
 const OUT = path.join(__dirname, 'index.html');
@@ -14,7 +15,7 @@ const START = '<script>\n(function(){';
 const END = '})();\n</script>';
 
 async function build(){
-  const src = fs.readFileSync(SRC, 'utf8');
+  const src = assembleSource(SRC);
   const i = src.indexOf(START);
   const j = src.indexOf(END, i);
   if (i < 0 || j < 0) throw new Error('не нашёл границы инлайн-скрипта (' + START + ' ... ' + END + ') в ' + SRC);

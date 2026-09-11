@@ -1,8 +1,10 @@
 // Мини-проверка правил, которые ломаются молча. Запуск: node check.js
-// Проверяет ЧИТАЕМЫЙ исходник (src/game.html) — index.html теперь генерируется
-// build.js минификацией и regex-паттерны ниже по нему не сработают.
+// Проверяет ЧИТАЕМЫЙ исходник, собранный из src/game.html + src/data/*.js
+// (см. assemble.js) — index.html генерируется build.js минификацией, и
+// regex-паттерны ниже по нему не сработают.
 const fs = require('fs');
-const src = fs.readFileSync(__dirname + '/src/game.html', 'utf8');
+const { assembleSource } = require('./assemble.js');
+const src = assembleSource(__dirname + '/src/game.html');
 const grab = (re, name) => {
   const m = src.match(re);
   if (!m) throw new Error('не нашёл в index.html: ' + name);
