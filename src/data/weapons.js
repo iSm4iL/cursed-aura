@@ -232,3 +232,44 @@
 
   const WEAPON_IDS = Object.keys(WEAPONS);
   const ACTIVE_WEAPON_IDS = WEAPON_IDS.filter((id) => !WEAPONS[id].hidden);
+
+  // Классы персонажа (2026-09-11). Огню хватает своих 3 заклинаний (fire/blast/lava —
+  // все уже element:'fire'); Лёд/Вода/Воздух добирают до 3 заимствованием у элементов без
+  // своего класса (blood/earth/lightning/metal/none) — заклинаний ровно 8 небазовых на
+  // 3 класса по 2 слота, поэтому Барьер (нейтральная защита) закономерно достаётся двум.
+  // weapons[0] — стартовое заклинание класса (owned на старте забега).
+  // ВАЖНО: класс — эксклюзивный пул на весь забег (collectCandidates фильтрует им ACTIVE_WEAPON_IDS).
+  // Побочный эффект: слияния «Ледяная пустыня» (fire+frost) и «Небесный удар» (blast+lightning)
+  // требуют пары из РАЗНЫХ классов и больше не собираются внутри одного забега — это
+  // структурно неизбежно (fire всегда в Пиромантах, остальные элементы — нет). «Обвал»
+  // (wave+earth) остаётся живым — оба в классе Вода.
+  // skin — палитра процедурного плейсхолдер-спрайта персонажа на класс (см.
+  // makeClassPlayerTexture в game.html); заменяется целиком, если пользователь пришлёт
+  // свой арт под конвенцию CUSTOM_ASSETS (тогда красится вместо этого общим тинтом color).
+  const CLASSES = {
+    fire: {
+      name: 'Пиромант', color: 0xff7a3d,
+      desc: 'Огонь, взрыв, лава — чистый урон и выжженная земля.',
+      weapons: ['fire', 'blast', 'lava'],
+      skin: { cloak: 0x6e2a1a, hood: 0xe0592a, gem: 0xff7a3d, ring: 0xffcf9e }
+    },
+    ice: {
+      name: 'Лёд', color: 0x9fe8ff,
+      desc: 'Лёд, металлические шипы, барьер — контроль и защита.',
+      weapons: ['frost', 'metal', 'barrier'],
+      skin: { cloak: 0x1f4a63, hood: 0x6fd3f0, gem: 0x9fe8ff, ring: 0xeafeff }
+    },
+    water: {
+      name: 'Вода', color: 0x4fb8e0,
+      desc: 'Волна, кровь, землетрясение — течение и порабощение.',
+      weapons: ['wave', 'charm', 'earth'],
+      skin: { cloak: 0x123a52, hood: 0x2f8fc2, gem: 0x4fb8e0, ring: 0xcdeeff }
+    },
+    air: {
+      name: 'Воздух', color: 0xbfe9ff,
+      desc: 'Воздушная пуля, молния, барьер — скорость и шторм.',
+      weapons: ['airbullet', 'lightning', 'barrier'],
+      skin: { cloak: 0x3c4a4a, hood: 0xbfe9df, gem: 0xbfe9ff, ring: 0xffffff }
+    }
+  };
+  const CLASS_IDS = Object.keys(CLASSES);

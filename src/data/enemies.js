@@ -15,20 +15,26 @@
 
   // Пять категорий врагов. Всё задано множителями от базового врага, чтобы правился
   // один ENEMY_BASE_HP, а не двадцать чисел. heavy — не отбрасывается и не стягивается.
+  // Радиусы подняты на +3 каждый (2026-09-11, жалоба «карта выглядит пустой») — рядовые
+  // получили самый большой относительный прирост (они и составляют основную массу толпы),
+  // тяжёлые тиры уже были достаточно заметны. ENEMY_STOP_DIST ниже поднят вместе с ними.
   const ENEMY_TIERS = {
-    normal:   { tex: 'tex-enemy',    radius: 10, hp: 1,  dmg: 1,   speed: 1,    orb: 'small' },
-    enhanced: { tex: 'tex-enhanced', radius: 13, hp: 3,  dmg: 1.3, speed: 1,    orb: 'medium' },
-    elite:    { tex: 'tex-elite',    radius: 16, hp: 5,  dmg: 1.6, speed: 0.95, orb: 'large' },
-    miniboss: { tex: 'tex-miniboss', radius: 22, hp: 10, dmg: 2,   speed: 0.8,  xpPct: 0.25, xpMin: 45, heavy: true },
-    boss:     { tex: 'tex-boss',     radius: 28, hp: 4,  dmg: 2.5, speed: 0.72, xpPct: 0.5,  xpMin: 90,  heavy: true, slamMs: 3600, slamRadius: 130, slamDmg: 14 },
+    normal:   { tex: 'tex-enemy',    radius: 13, hp: 1,  dmg: 1,   speed: 1,    orb: 'small' },
+    enhanced: { tex: 'tex-enhanced', radius: 16, hp: 3,  dmg: 1.3, speed: 1,    orb: 'medium' },
+    elite:    { tex: 'tex-elite',    radius: 19, hp: 5,  dmg: 1.6, speed: 0.95, orb: 'large' },
+    miniboss: { tex: 'tex-miniboss', radius: 25, hp: 10, dmg: 2,   speed: 0.8,  xpPct: 0.25, xpMin: 45, heavy: true },
+    boss:     { tex: 'tex-boss',     radius: 31, hp: 4,  dmg: 2.5, speed: 0.72, xpPct: 0.5,  xpMin: 90,  heavy: true, slamMs: 3600, slamRadius: 130, slamDmg: 14 },
     // Древний страж выходит на третьей арене: крупнее, живучее и бьёт по площади чаще
     // и дальше — этот бой должен ощущаться рубежом, а не третьим одинаковым боссом.
-    elder:    { tex: 'tex-elder',    radius: 40, hp: 9,  dmg: 3.2, speed: 0.62, xpPct: 1.0, xpMin: 260, heavy: true, slamMs: 2600, slamRadius: 200, slamDmg: 22 }
+    elder:    { tex: 'tex-elder',    radius: 43, hp: 9,  dmg: 3.2, speed: 0.62, xpPct: 1.0, xpMin: 260, heavy: true, slamMs: 2600, slamRadius: 200, slamDmg: 22 }
   };
   // Шанс уронить кристалл жизни. Редкий у рядовых, гарантированный у мини-босса —
   // чтобы после ошибки можно было отыграться, но не стоять в толпе бесконечно.
   const HP_ORB_CHANCE = { normal: 0.030, enhanced: 0.10, elite: 0.20, miniboss: 1, boss: 0.5 };
-  const HP_ORB_HEAL_PCT = 0.12;
+  // 30-40 HP на глаз при базовых 100 maxHp (было 12% ~= 12 HP, ощущалось как «почти ничего»).
+  // Процент, а не флэт — специально, чтобы лечение росло вместе с maxHp от мета-прокачки
+  // и предметов забега, а не отставало от них.
+  const HP_ORB_HEAL_PCT = 0.35;
   // Шанс с убийства сам по себе превращается в бесконечное лечение, когда билд убивает
   // десятками в секунду: 3% от 50 убийств — это полтора кристалла в секунду. Поэтому
   // сверх шанса стоит глобальный интервал — лечение остаётся спасением после ошибки,

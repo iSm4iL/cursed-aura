@@ -193,6 +193,15 @@
     z-index: 10;
   }
   .overlay.show{ display: flex; }
+  /* Фон меню: свой файл — assets/menu_bg.jpg (любое разрешение, кроется cover). Нет
+     файла — просто не рисуется этот слой, снизу видны градиенты-заглушки. */
+  #mainMenu{
+    background:
+      url('assets/menu_bg.jpg') center/cover no-repeat,
+      radial-gradient(ellipse 900px 700px at 50% 15%, #2f6e6455, transparent 65%),
+      radial-gradient(ellipse 700px 600px at 85% 85%, #4a2a6e4a, transparent 60%),
+      linear-gradient(180deg, #05060bd9, #0c0e16f5);
+  }
   .card{
     background: var(--panel-solid);
     border: 1px solid var(--edge);
@@ -410,6 +419,7 @@
   .loc-card.locked{ opacity: 0.55; }
   .loc-name{ font-weight: 700; font-size: 15px; margin-bottom: 4px; }
   .loc-desc{ font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+  .cls-swatch{ width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 8px; border: 1px solid var(--edge); }
   .upg-row{ display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--edge); text-align: left; }
   .upg-row .name{ flex: 1; font-size: 13px; }
   .upg-row .lv{ font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); }
@@ -593,6 +603,20 @@
       <button class="menu-btn ghost" id="btnGoUpgrade">Прокачка</button>
       <button class="menu-btn ghost" id="btnGoSettings">Настройки</button>
     </div>
+    <div id="menuClass" hidden>
+      <h1>Выбор класса</h1>
+      <div class="loc-carousel">
+        <button class="loc-arrow" id="clsPrev">&lsaquo;</button>
+        <div class="loc-card" id="clsCard">
+          <div class="cls-swatch" id="clsSwatch"></div>
+          <div class="loc-name" id="clsName"></div>
+          <div class="loc-desc" id="clsDesc"></div>
+        </div>
+        <button class="loc-arrow" id="clsNext">&rsaquo;</button>
+      </div>
+      <button class="menu-btn" id="btnClassNext">Дальше</button>
+      <button class="menu-btn ghost" id="btnClassBack">Назад</button>
+    </div>
     <div id="menuLocations" hidden>
       <h1>Выбор локации</h1>
       <div class="loc-carousel">
@@ -636,12 +660,12 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.12';
+  const GAME_VERSION = '1.0.13';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
   const BOLT_SPEED = 560;
-  const ENEMY_STOP_DIST = 18;
+  const ENEMY_STOP_DIST = 21;
 
   /* @include data/enemies.js */
 
@@ -954,6 +978,49 @@
     g.generateTexture(key, w, w);
     g.destroy();
   }
+  // Плейсхолдер-скин на класс: тот же силуэт мага, что и makePlayerTexture, но своя
+  // палитра (CLASSES[id].skin) + маленький опознавательный символ над капюшоном —
+  // используется, только пока нет собственного файла в assets/ (см. CUSTOM_ASSETS).
+  function makeClassPlayerTexture(key, r, skin, cid){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    const w = r * 2;
+    g.fillStyle(skin.cloak, 1);
+    g.beginPath();
+    g.moveTo(r, 3); g.lineTo(w - 1, w - 1); g.lineTo(1, w - 1); g.closePath();
+    g.fillPath();
+    g.fillStyle(skin.hood, 1);
+    g.fillCircle(r, r - 2, r - 3);
+    g.fillStyle(0x0b1a1d, 1);
+    g.fillCircle(r, r - 1, r - 6);
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(r - 2.6, r - 1.2, 1.5);
+    g.fillCircle(r + 2.6, r - 1.2, 1.5);
+    g.fillStyle(skin.gem, 1);
+    g.fillCircle(r, w - 6, 2.2);
+    g.lineStyle(1.5, skin.ring, 0.9);
+    g.strokeCircle(r, r - 2, r - 3);
+    if (cid === 'fire'){                        // остриё пламени
+      g.fillStyle(skin.gem, 1);
+      g.beginPath();
+      g.moveTo(r, -3); g.lineTo(r + 3, 4); g.lineTo(r, 1.5); g.lineTo(r - 3, 4);
+      g.closePath(); g.fillPath();
+    } else if (cid === 'ice'){                   // кристалл-ромб
+      g.lineStyle(1.6, skin.gem, 1);
+      g.beginPath();
+      g.moveTo(r, -3); g.lineTo(r + 3, 1); g.lineTo(r, 5); g.lineTo(r - 3, 1);
+      g.closePath(); g.strokePath();
+    } else if (cid === 'water'){                 // капля
+      g.fillStyle(skin.gem, 1);
+      g.fillCircle(r, 1, 2.6);
+    } else if (cid === 'air'){                   // завиток ветра
+      g.lineStyle(1.6, skin.gem, 1);
+      g.beginPath();
+      g.arc(r, 1, 3.2, Phaser.Math.DegToRad(200), Phaser.Math.DegToRad(20), false);
+      g.strokePath();
+    }
+    g.generateTexture(key, w, w);
+    g.destroy();
+  }
   function makeIcicleTexture(key, len, wid){
     const g = new Phaser.GameObjects.Graphics(scene);
     g.fillStyle(0xdff6ff, 0.95);
@@ -1093,7 +1160,7 @@
     hp:     { label: 'Макс. здоровье',           max: 5, step: 0.03, cost: (lv) => 6 + lv * 4 },
     pickup: { label: 'Радиус подбора опыта',     max: 5, step: 8,    cost: (lv) => 5 + lv * 3 }
   };
-  function defaultMeta(){ return { shards: 0, dmg: 0, spd: 0, cd: 0, hp: 0, pickup: 0, sound: true }; }
+  function defaultMeta(){ return { shards: 0, dmg: 0, spd: 0, cd: 0, hp: 0, pickup: 0, sound: true, classId: CLASS_IDS[0] }; }
   function loadMeta(){
     try {
       const raw = localStorage.getItem(META_KEY);
@@ -1110,16 +1177,53 @@
     { name: 'Кровавые топи', desc: 'Скоро.', locked: true }
   ];
   let curLocation = 0;
+  let curClassIdx = Math.max(0, CLASS_IDS.indexOf(meta.classId));
 
   function showMenuPanel(name){
-    ['menuHome', 'menuLocations', 'menuUpgrade', 'menuSettings'].forEach((id) => {
+    ['menuHome', 'menuClass', 'menuLocations', 'menuUpgrade', 'menuSettings'].forEach((id) => {
       document.getElementById(id).hidden = (id !== name);
     });
     if (name === 'menuUpgrade') renderUpgradeList();
+    if (name === 'menuClass') renderClass();
     if (name === 'menuLocations') renderLocation();
     if (name === 'menuSettings') renderSoundButton();
     document.getElementById('menuShards').textContent = String(meta.shards);
   }
+  function renderClass(){
+    const cls = CLASSES[CLASS_IDS[curClassIdx]];
+    document.getElementById('clsName').textContent = cls.name;
+    document.getElementById('clsDesc').textContent = cls.desc;
+    document.getElementById('clsSwatch').style.background = hexColor(cls.color);
+    document.getElementById('clsPrev').disabled = curClassIdx === 0;
+    document.getElementById('clsNext').disabled = curClassIdx === CLASS_IDS.length - 1;
+  }
+  // Применяет выбранный класс к текущему забегу: стартовое заклинание + косметический
+  // скин. Если свой файл персонажа лежит в assets/ (CUSTOM_ASSETS) — красим его общим
+  // тинтом класса; иначе используем готовый процедурный плейсхолдер на класс (свой силуэт,
+  // не просто перекрашенный). Зовётся и в create() (полный сброс на рестарте), и повторно
+  // по клику «Играть» — на самом первом запуске create() уже отработал ДО того, как игрок
+  // вообще открыл меню, так что выбор нужно применить ещё раз.
+  function applyClass(){
+    const cid = CLASS_IDS[curClassIdx];
+    const cls = CLASSES[cid];
+    owned = {};
+    owned[cls.weapons[0]] = 1;
+    if (!player) return;
+    const classTexKey = 'tex-player-' + cid;
+    if (scene.textures.exists(classTexKey)){
+      player.setTexture(classTexKey);
+      player.clearTint();
+      player.setScale(1);
+      player.body.setCircle(12);
+    } else {
+      player.setTexture('tex-player');
+      const pf = texFit['tex-player'] || 1;
+      player.setScale(pf);
+      player.body.setCircle(12 / pf);
+      player.setTint(cls.color);
+    }
+  }
+  function classWeapons(){ return CLASSES[CLASS_IDS[curClassIdx]].weapons; }
   function renderLocation(){
     const loc = LOCATIONS[curLocation];
     document.getElementById('locName').textContent = loc.name + (loc.locked ? ' (заперто)' : '');
@@ -1190,7 +1294,6 @@
     scene = this;
     stats = { maxHp: 100, moveSpeed: PLAYER_SPEED, pickupRadius: 100, critChance: 0, critMult: 1.5, evasion: 0 };
     applyMetaBonuses();
-    owned = { fire: 1 };
     evolved = {};
     evoLevel = {};
     fusedAway = {};
@@ -1279,13 +1382,16 @@
     gridLayer.setScrollFactor(0);
     gridLayer.setDepth(-20);
 
-    setupTexture('tex-player', ASSET_BASE_SIZE['tex-player'], () => makePlayerTexture('tex-player', 12));
-    makeCircleTexture('tex-enemy', 10, 0xe2495c, 0xffb9c2);
-    makeCircleTexture('tex-enhanced', 13, 0xd8455f, 0xffb066);
-    makeCircleTexture('tex-elite', 16, 0xe2495c, 0xffd700);
-    makeCircleTexture('tex-miniboss', 22, 0xa63fc8, 0xffd700);
-    makeCircleTexture('tex-boss', 28, 0x8a4fd9, 0xf1e2ff);
-    makeCircleTexture('tex-elder', 40, 0x5a1fb0, 0xffd700);
+    setupTexture('tex-player', ASSET_BASE_SIZE['tex-player'], () => {
+      makePlayerTexture('tex-player', 12);   // общий вид — используют призрачные двойники (Кровь)
+      CLASS_IDS.forEach((id) => makeClassPlayerTexture('tex-player-' + id, 12, CLASSES[id].skin, id));
+    });
+    makeCircleTexture('tex-enemy', 13, 0xe2495c, 0xffb9c2);
+    makeCircleTexture('tex-enhanced', 16, 0xd8455f, 0xffb066);
+    makeCircleTexture('tex-elite', 19, 0xe2495c, 0xffd700);
+    makeCircleTexture('tex-miniboss', 25, 0xa63fc8, 0xffd700);
+    makeCircleTexture('tex-boss', 31, 0x8a4fd9, 0xf1e2ff);
+    makeCircleTexture('tex-elder', 43, 0x5a1fb0, 0xffd700);
     makeSparkStarTexture('tex-bolt', 6);
     makeSunTexture('tex-sun', 16);
     makeBulletTexture('tex-bullet', 28, 9);
@@ -1310,7 +1416,7 @@
 
     player = this.physics.add.image(0, 0, 'tex-player');
     player.setDamping(true).setDrag(0.0015);
-    { const pf = texFit['tex-player'] || 1; player.setScale(pf); player.body.setCircle(12 / pf); }
+    applyClass();
 
     this.cameras.main.startFollow(player, true, 1, 1);
     this.cameras.main.setZoom(1);
@@ -3032,11 +3138,12 @@
   // Эволюции сюда не попадают никогда — они выдаются отдельным принудительным окном
   // сразу после того, как заклинание достигло 5 уровня (см. chooseCandidate).
   function collectCandidates(){
-    const news = ACTIVE_WEAPON_IDS.filter((id) => !owned[id]).map((id) => ({ id, kind: 'new' }));
-    const upgrades = ACTIVE_WEAPON_IDS.filter((id) => owned[id] && !fusedAway[id] && owned[id] < WEAPON_MAX_LEVEL).map((id) => ({ id, kind: 'upgrade' }));
+    const pool = ACTIVE_WEAPON_IDS.filter((id) => classWeapons().includes(id));
+    const news = pool.filter((id) => !owned[id]).map((id) => ({ id, kind: 'new' }));
+    const upgrades = pool.filter((id) => owned[id] && !fusedAway[id] && owned[id] < WEAPON_MAX_LEVEL).map((id) => ({ id, kind: 'upgrade' }));
     // Второй этаж: качать эволюции можно только после третьей арены.
     if (evoUpgradesUnlocked){
-      ACTIVE_WEAPON_IDS.forEach((id) => {
+      pool.forEach((id) => {
         if (evolved[id] !== undefined && !fusedAway[id] && (evoLevel[id] || WEAPON_MAX_LEVEL) < EVO_MAX_LEVEL) upgrades.push({ id, kind: 'evo' });
       });
     }
@@ -3943,8 +4050,12 @@
     btnFull.hidden = false;
     btnFull.onclick = () => game.scale.toggleFullscreen();
   }
-  document.getElementById('btnGoLocations').onclick = () => showMenuPanel('menuLocations');
-  document.getElementById('btnLocBack').onclick = () => showMenuPanel('menuHome');
+  document.getElementById('btnGoLocations').onclick = () => showMenuPanel('menuClass');
+  document.getElementById('btnClassBack').onclick = () => showMenuPanel('menuHome');
+  document.getElementById('btnClassNext').onclick = () => showMenuPanel('menuLocations');
+  document.getElementById('clsPrev').onclick = () => { if (curClassIdx > 0){ curClassIdx -= 1; meta.classId = CLASS_IDS[curClassIdx]; saveMeta(); renderClass(); } };
+  document.getElementById('clsNext').onclick = () => { if (curClassIdx < CLASS_IDS.length - 1){ curClassIdx += 1; meta.classId = CLASS_IDS[curClassIdx]; saveMeta(); renderClass(); } };
+  document.getElementById('btnLocBack').onclick = () => showMenuPanel('menuClass');
   document.getElementById('btnGoUpgrade').onclick = () => showMenuPanel('menuUpgrade');
   document.getElementById('btnUpgBack').onclick = () => showMenuPanel('menuHome');
   document.getElementById('btnGoSettings').onclick = () => showMenuPanel('menuSettings');
@@ -3954,6 +4065,7 @@
   document.getElementById('locNext').onclick = () => { if (curLocation < LOCATIONS.length - 1){ curLocation += 1; renderLocation(); } };
   document.getElementById('btnStartRun').onclick = () => {
     if (LOCATIONS[curLocation].locked) return;
+    applyClass();
     document.getElementById('mainMenu').classList.remove('show');
     running = true;
   };
