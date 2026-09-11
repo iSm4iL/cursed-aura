@@ -544,7 +544,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.5';
+  const GAME_VERSION = '1.0.6';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -608,8 +608,8 @@
   // правка тянула за собой всю шкалу. Точки — [мс забега, множитель], между ними линейно.
   // Первые две минуты сознательно мягкие: игрок должен успевать убивать, собирать опыт
   // и возвращаться за брошенными кристаллами, а не бежать без остановки.
-  const ENEMY_HP_CURVE    = [[0, 0.42], [60000, 0.58], [120000, 0.82], [180000, 1.15], [360000, 2.3], [600000, 4.4], [900000, 7.6], [1200000, 12.0], [1500000, 18.0], [1800000, 26.0]];
-  const ENEMY_DMG_CURVE   = [[0, 0.60], [60000, 0.72], [120000, 0.88], [180000, 1.05], [360000, 1.7], [600000, 2.6], [900000, 3.5], [1200000, 4.4], [1500000, 5.6], [1800000, 7.0]];
+  const ENEMY_HP_CURVE    = [[0, 0.42], [60000, 0.58], [120000, 0.82], [180000, 1.10], [300000, 1.55], [360000, 1.95], [600000, 4.0], [900000, 7.4], [1200000, 12.0], [1500000, 18.0], [1800000, 26.0]];
+  const ENEMY_DMG_CURVE   = [[0, 0.60], [60000, 0.72], [120000, 0.88], [180000, 1.00], [300000, 1.22], [360000, 1.42], [600000, 2.35], [900000, 3.3], [1200000, 4.4], [1500000, 5.6], [1800000, 7.0]];
   const ENEMY_SPEED_CURVE = [[0, 0.78], [60000, 0.84], [120000, 0.90], [240000, 0.98], [420000, 1.05], [720000, 1.22], [1080000, 1.42], [1500000, 1.62]];
   const ENEMY_CAP_CURVE   = [[0, 40], [60000, 85], [120000, 145], [180000, 210], [300000, 320], [480000, 430], [720000, 520], [1200000, 600], [1800000, 680]];
   const SPAWN_MS_CURVE    = [[0, 1200], [60000, 780], [120000, 520], [180000, 390], [300000, 250], [480000, 150], [720000, 100], [1200000, 62], [1800000, 45]];
@@ -693,9 +693,9 @@
   // поверх уже накопившейся на карте толпы там гарантированно убивает. К волне 2-3
   // состав выходит на заявленные числа и дальше растёт.
   const ARENA_ENHANCED = 7;
-  const ARENA_ENHANCED_STEP = 5;
+  const ARENA_ENHANCED_STEP = 4;
   const ARENA_NORMAL = 22;
-  const ARENA_NORMAL_STEP = 10;
+  const ARENA_NORMAL_STEP = 7;
   const ARENA_REINFORCE_ARC = Math.PI * 1.15;
 
   const TILE = 128;
@@ -793,7 +793,7 @@
       ],
       evolutions: [
         { name: 'Разряд смерти', desc: 'Каждый убитый враг лопается разрядом: цепь бьёт по тем, кто стоял рядом', type: 'deathspark', level6: { dmg: 55, chainCount: 3, chainRadius: 145, falloff: [1, 0.6, 0.4], cooldown: 999999 } },
-        { name: 'Гнев небес', desc: '8 молний обрушиваются разом вокруг тебя, каждая с короткой цепью', type: 'multichain', level6: { dmg: 150, cooldown: 6500, chainCount: 3, chainRadius: 120, strikes: 8, falloff: [1, 0.55, 0.35] } },
+        { name: 'Гнев небес', desc: '8 молний бьют с неба по случайным врагам на экране, каждая расходится цепью', type: 'multichain', level6: { dmg: 175, cooldown: 6500, chainCount: 4, chainRadius: 170, strikes: 8, falloff: [1, 0.65, 0.45, 0.35] } },
         { name: 'Цепная реакция', desc: 'Каждое другое твоё заклинание дополнительно бьёт цепной молнией', type: 'reactionproc', level6: { dmg: 100, chainCount: 10, chainRadius: 150, falloff: [1, 0.8, 0.65, 0.5, 0.4, 0.3, 0.24, 0.19, 0.15, 0.12] } }
       ]
     },
@@ -1332,6 +1332,58 @@
     g.destroy();
   }
 
+  function makePlayerTexture(key, r){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    const w = r * 2;
+    g.fillStyle(0x2b6f78, 1);                 // плащ
+    g.beginPath();
+    g.moveTo(r, 3); g.lineTo(w - 1, w - 1); g.lineTo(1, w - 1); g.closePath();
+    g.fillPath();
+    g.fillStyle(0x3f9aa6, 1);                 // капюшон
+    g.fillCircle(r, r - 2, r - 3);
+    g.fillStyle(0x0b1a1d, 1);                 // тень лица
+    g.fillCircle(r, r - 1, r - 6);
+    g.fillStyle(0x9df7ff, 1);                 // глаза
+    g.fillCircle(r - 2.6, r - 1.2, 1.5);
+    g.fillCircle(r + 2.6, r - 1.2, 1.5);
+    g.fillStyle(0x55d6c2, 1);                 // самоцвет на груди
+    g.fillCircle(r, w - 6, 2.2);
+    g.lineStyle(1.5, 0xbdfff2, 0.9);
+    g.strokeCircle(r, r - 2, r - 3);
+    g.generateTexture(key, w, w);
+    g.destroy();
+  }
+  function makeIcicleTexture(key, len, wid){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    g.fillStyle(0xdff6ff, 0.95);
+    g.beginPath();
+    g.moveTo(len, wid / 2);
+    g.lineTo(len * 0.35, 0);
+    g.lineTo(0, wid * 0.32);
+    g.lineTo(0, wid * 0.68);
+    g.lineTo(len * 0.35, wid);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(1.5, 0xffffff, 0.95);
+    g.strokePath();
+    g.fillStyle(0xffffff, 0.7);
+    g.fillRect(len * 0.14, wid * 0.42, len * 0.5, 1.6);
+    g.generateTexture(key, len, wid);
+    g.destroy();
+  }
+  function makeSparkStarTexture(key, r){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    const w = r * 2, a = r * 0.34;
+    g.fillStyle(0xffffff, 0.85);
+    g.fillCircle(r, r, r * 0.5);
+    g.fillStyle(0xffffff, 1);
+    g.beginPath();
+    g.moveTo(r, 0); g.lineTo(r + a, r - a); g.lineTo(w, r); g.lineTo(r + a, r + a);
+    g.lineTo(r, w); g.lineTo(r - a, r + a); g.lineTo(0, r); g.lineTo(r - a, r - a);
+    g.closePath(); g.fillPath();
+    g.generateTexture(key, w, w);
+    g.destroy();
+  }
   function makeDiamondTexture(key, size, fillColor, strokeColor){
     const g = new Phaser.GameObjects.Graphics(scene);
     g.fillStyle(fillColor, 1);
@@ -1490,14 +1542,14 @@
     gridLayer.setScrollFactor(0);
     gridLayer.setDepth(-20);
 
-    makeCircleTexture('tex-player', 12, 0x55d6c2, 0xbdfff2);
+    makePlayerTexture('tex-player', 12);
     makeCircleTexture('tex-enemy', 10, 0xe2495c, 0xffb9c2);
     makeCircleTexture('tex-enhanced', 13, 0xd8455f, 0xffb066);
     makeCircleTexture('tex-elite', 16, 0xe2495c, 0xffd700);
     makeCircleTexture('tex-miniboss', 22, 0xa63fc8, 0xffd700);
     makeCircleTexture('tex-boss', 28, 0x8a4fd9, 0xf1e2ff);
     makeCircleTexture('tex-elder', 40, 0x5a1fb0, 0xffd700);
-    makeCircleTexture('tex-bolt', 6, 0xd9f2ee, 0x55d6c2);
+    makeSparkStarTexture('tex-bolt', 6);
     makeDiamondTexture('tex-spark', 10, 0x55d6c2, 0xffffff);
     makeDiamondTexture('tex-xp', 10, 0xd9b35c, 0xfff2c9);
     makeDiamondTexture('tex-rune', 18, 0xffffff, 0xffffff);
@@ -1511,7 +1563,7 @@
     makeCircleTexture('tex-saw', 22, 0xdfe6f0, 0x8fa0b8);
     makeRectTexture('tex-wallblock', 26, 26, 0xb9c2d0);
     makeCapsuleTexture('tex-slash', 52, 260, 0xffffff, 0xffffff);
-    makeCapsuleTexture('tex-icicle', 36, 13, 0xe8fbff, 0xffffff);
+    makeIcicleTexture('tex-icicle', 36, 13);
     makeCapsuleTexture('tex-dragon', 380, 54, 0xffffff, 0xffffff);
     makeCapsuleTexture('tex-rocket', 30, 13, 0xffffff, 0xffffff);
     makeCapsuleTexture('tex-gust', 96, 68, 0xffffff, 0xffffff);
@@ -2591,11 +2643,11 @@
 
   // Общий проход по цепи — используется обычной молнией, "Гневом небес" (несколько цепей
   // разом) и пассивным проком "Цепной реакции", чтобы не дублировать один и тот же код трижды.
-  function walkChain(start, cfg, color){
+  function walkChain(start, cfg, color, ox, oy){
     dmgSrc = 'lightning';
     const hitSet = new Set();
     let current = start;
-    let prevX = player.x, prevY = player.y;
+    let prevX = ox !== undefined ? ox : player.x, prevY = oy !== undefined ? oy : player.y;
     const falloff = cfg.falloff || [1];
     for (let i = 0; i < cfg.chainCount && current; i++){
       const cx = current.x, cy = current.y;
@@ -2636,8 +2688,28 @@
   function fireMultiChain(weaponId, time){
     dmgSrc = weaponId;
     const cfg = currentCfg(weaponId);
-    const starters = getNearestEnemies(cfg.strikes || 5);
-    starters.forEach((s) => walkChain(s, cfg, WEAPONS[weaponId].color));
+    const cam = scene.cameras.main;
+    const pool = [];
+    enemies.children.each((e) => {
+      if (!e.active || e.charmedUntil) return;
+      if (e.x > cam.scrollX - 30 && e.x < cam.scrollX + cam.width + 30 &&
+          e.y > cam.scrollY - 30 && e.y < cam.scrollY + cam.height + 30) pool.push(e);
+    });
+    if (!pool.length) return;
+    Phaser.Utils.Array.Shuffle(pool);
+    const n = Math.min(cfg.strikes || 8, pool.length);
+    const col = WEAPONS[weaponId].color;
+    for (let i = 0; i < n; i++){
+      const tgt = pool[i];
+      scene.time.delayedCall(i * 60, () => {
+        if (!running || paused || !tgt.active) return;
+        dmgSrc = weaponId;
+        spawnChainBolt(tgt.x, tgt.y - 480, tgt.x, tgt.y, col);
+        spawnBurst(tgt.x, tgt.y, col, 8);
+        walkChain(tgt, cfg, col, tgt.x, tgt.y);
+      });
+    }
+    scene.cameras.main.shake(200, 0.003);
   }
 
   // "Цепная реакция" — не оружие само по себе, а пассивная эволюция молнии: любой ДРУГОЙ
@@ -2680,11 +2752,25 @@
   }
   function spawnChainBolt(x1, y1, x2, y2, color){
     const g = scene.add.graphics().setDepth(45);
-    g.lineStyle(5, color, 0.5);
-    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.strokePath();
-    g.lineStyle(2, 0xffffff, 0.95);
-    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.strokePath();
-    scene.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+    const segs = 5;
+    const dx = (x2 - x1) / segs, dy = (y2 - y1) / segs;
+    const nlen = Math.hypot(x2 - x1, y2 - y1) || 1;
+    const nx = -(y2 - y1) / nlen, ny = (x2 - x1) / nlen;
+    const pts = [[x1, y1]];
+    for (let i = 1; i < segs; i++){
+      const j = (Math.random() - 0.5) * 18;
+      pts.push([x1 + dx * i + nx * j, y1 + dy * i + ny * j]);
+    }
+    pts.push([x2, y2]);
+    const stroke = (wid, col, al) => {
+      g.lineStyle(wid, col, al);
+      g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.strokePath();
+    };
+    stroke(6, color, 0.35);
+    stroke(2.5, 0xffffff, 0.95);
+    scene.tweens.add({ targets: g, alpha: 0, duration: 200, onComplete: () => g.destroy() });
   }
 
   // Ближайший НЕподчинённый враг в радиусе — по нему детонирует летящий снаряд.
@@ -3670,14 +3756,15 @@
       const s = scene.add.image(x, y, 'tex-spark');
       s.setTint(color);
       const angle = Math.random() * Math.PI * 2;
-      const dist = 18 + Math.random() * 22;
+      const dist = 22 + Math.random() * 30;
+      s.setScale(0.7 + Math.random() * 0.5);
       scene.tweens.add({
         targets: s,
         x: x + Math.cos(angle) * dist,
         y: y + Math.sin(angle) * dist,
         alpha: 0,
-        scale: 0.3,
-        duration: 260 + Math.random() * 120,
+        scale: 0.2,
+        duration: 280 + Math.random() * 160,
         onComplete: () => s.destroy()
       });
     }

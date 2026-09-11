@@ -30,7 +30,7 @@ Object.keys(tiers).forEach((name) => {
 // ---- 2. Враг обязан дотягиваться до игрока.
 // Он останавливается за ENEMY_STOP_DIST от центра игрока; если это больше суммы
 // радиусов, тела не пересекаются и контактный урон не срабатывает вообще.
-const playerR = num(/makeCircleTexture\('tex-player', (\d+)/, 'tex-player');
+const playerR = num(/make\w*Texture\('tex-player', (\d+)/, 'tex-player');
 const stop = num(/const ENEMY_STOP_DIST = (\d+)/, 'ENEMY_STOP_DIST');
 if (stop >= playerR + tiers.normal.radius) throw new Error('ENEMY_STOP_DIST ' + stop + ' >= радиусы ' + (playerR + tiers.normal.radius) + ': враги не смогут задеть игрока');
 
