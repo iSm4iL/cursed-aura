@@ -416,7 +416,38 @@
   }
   .fusion-yes{ background: var(--gold); border: none; color: #14100a; }
   .fusion-no{ background: transparent; border: 1px solid var(--edge); color: var(--text-dim); }
-  .menucard{ width: min(400px, 94vw); }
+  /* Меню — единственное место с собственным лицом: срезанный угол вместо ровного
+     прямоугольника (трещина, а не скруглённая SaaS-карточка) и грань, перетекающая
+     от цвета Проклятия к цвету Ауры — та же дуальность, что в названии игры.
+     Остальные карточки (смерть/пауза/левел-ап) — .card как был, не трогаем. */
+  .menucard{
+    width: min(400px, 94vw);
+    border-radius: 3px;
+    clip-path: polygon(0 16px, 16px 0, 100% 0, 100% 100%, 0 100%);
+    border-image: linear-gradient(150deg, var(--cursed), var(--edge) 35%, var(--edge) 65%, var(--aura)) 1;
+  }
+  .wordmark{
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    margin: 2px 0 20px;
+    font-size: clamp(25px, 7vw, 32px);
+    font-weight: 700;
+  }
+  .wordmark .w-cursed{ color: var(--cursed); text-shadow: 0 0 20px #55d6c255; }
+  .wordmark .w-aura{ color: var(--aura); text-shadow: 0 0 20px #e2495c55; }
+  .wordmark .w-crack{
+    width: 3px; height: 24px; border-radius: 2px;
+    background: linear-gradient(180deg, var(--cursed), var(--aura));
+    transform: skewX(-12deg);
+  }
+  /* Заголовки под-экранов меню (Класс/Локация/Прокачка/Настройки) — тихая подпись
+     с тонкой чертой снизу вместо капса вразрядку (тот самый generic AI-tell). */
+  .menucard h1{
+    margin: 0 0 16px; padding-bottom: 9px;
+    font-size: 13px; font-weight: 600;
+    letter-spacing: normal; text-transform: none;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--edge);
+  }
   .menu-currency{ font-family: 'JetBrains Mono', monospace; color: var(--gold); font-size: 15px; margin: 2px 0 18px; }
   .menu-btn{
     display: block; width: 100%; padding: 13px 0; margin: 9px 0; border-radius: 8px;
@@ -435,7 +466,14 @@
   .loc-card.locked{ opacity: 0.55; }
   .loc-name{ font-weight: 700; font-size: 15px; margin-bottom: 4px; }
   .loc-desc{ font-size: 12px; color: var(--text-dim); line-height: 1.4; }
-  .cls-swatch{ width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 8px; border: 1px solid var(--edge); }
+  /* Ромб-руна вместо плоского кружка: цвет ставится в JS (renderClass) через
+     --sw, обводка/свечение читаются из той же переменной — одна точка правды. */
+  .cls-swatch{
+    width: 18px; height: 18px; margin: 4px auto 14px;
+    background: var(--sw, var(--edge));
+    transform: rotate(45deg);
+    box-shadow: 0 0 16px 1px var(--sw, transparent);
+  }
   .upg-row{ display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--edge); text-align: left; }
   .upg-row .name{ flex: 1; font-size: 13px; }
   .upg-row .lv{ font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); }
@@ -614,7 +652,7 @@
   <div class="menu-embers" id="menuEmbers"></div>
   <div class="card menucard">
     <div id="menuHome">
-      <h1>Cursed &amp; Aura</h1>
+      <div class="wordmark"><span class="w-cursed">Cursed</span><span class="w-crack" aria-hidden="true"></span><span class="w-aura">Aura</span></div>
       <div class="menu-currency">◆ <span id="menuShards">0</span></div>
       <button class="menu-btn" id="btnGoLocations">Играть</button>
       <button class="menu-btn ghost" id="btnGoUpgrade">Прокачка</button>
@@ -677,7 +715,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.14';
+  const GAME_VERSION = '1.0.15';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -1242,7 +1280,7 @@
     const cls = CLASSES[CLASS_IDS[curClassIdx]];
     document.getElementById('clsName').textContent = cls.name;
     document.getElementById('clsDesc').textContent = cls.desc;
-    document.getElementById('clsSwatch').style.background = hexColor(cls.color);
+    document.getElementById('clsSwatch').style.setProperty('--sw', hexColor(cls.color));
     document.getElementById('clsPrev').disabled = curClassIdx === 0;
     document.getElementById('clsNext').disabled = curClassIdx === CLASS_IDS.length - 1;
   }
