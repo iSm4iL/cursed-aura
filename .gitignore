@@ -2,3 +2,4 @@
 _test.html
 _pre.html
 *.backup.html
+node_modules/

@@ -1,0 +1,25 @@
+{
+  "name": "cursed-aura-survivors",
+  "version": "1.0.0",
+  "description": "Браузерная игра в духе Vampire Survivors / Magic Survival. Читаемый исходник — src/game.html (тянет Phaser 3 с CDN); `npm run build` минифицирует его в публикуемый index.html.",
+  "main": "check.js",
+  "scripts": {
+    "build": "node build.js",
+    "check": "node check.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iSm4iL/cursed-aura.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/iSm4iL/cursed-aura/issues"
+  },
+  "homepage": "https://github.com/iSm4iL/cursed-aura#readme",
+  "devDependencies": {
+    "terser": "^5.51.2"
+  }
+}
