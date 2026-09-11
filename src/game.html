@@ -391,6 +391,33 @@
   }
   .fusion-yes{ background: var(--gold); border: none; color: #14100a; }
   .fusion-no{ background: transparent; border: 1px solid var(--edge); color: var(--text-dim); }
+  .menucard{ width: min(400px, 94vw); }
+  .menu-currency{ font-family: 'JetBrains Mono', monospace; color: var(--gold); font-size: 15px; margin: 2px 0 18px; }
+  .menu-btn{
+    display: block; width: 100%; padding: 13px 0; margin: 9px 0; border-radius: 8px;
+    font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer;
+    background: var(--gold); border: none; color: #14100a;
+  }
+  .menu-btn.ghost{ background: transparent; border: 1px solid var(--edge); color: var(--text-dim); }
+  .menu-btn:disabled{ opacity: 0.35; cursor: default; }
+  .loc-carousel{ display: flex; align-items: center; gap: 10px; margin: 14px 0 20px; }
+  .loc-arrow{
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--edge); color: var(--text); font-size: 18px;
+  }
+  .loc-arrow:disabled{ opacity: 0.3; cursor: default; }
+  .loc-card{ flex: 1; min-width: 0; padding: 16px 10px; border: 1px solid var(--edge); border-radius: 8px; background: #0e1120; }
+  .loc-card.locked{ opacity: 0.55; }
+  .loc-name{ font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .loc-desc{ font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+  .upg-row{ display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--edge); text-align: left; }
+  .upg-row .name{ flex: 1; font-size: 13px; }
+  .upg-row .lv{ font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .upg-row button{
+    padding: 6px 12px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--gold); color: var(--gold); flex-shrink: 0;
+  }
+  .upg-row button:disabled{ opacity: 0.35; cursor: default; border-color: var(--edge); color: var(--text-dim); }
   .detail-desc{
     font-size: 13px;
     color: var(--text-dim);
@@ -557,6 +584,43 @@
   </div>
 </div>
 
+<div class="overlay show" id="mainMenu">
+  <div class="card menucard">
+    <div id="menuHome">
+      <h1>Cursed &amp; Aura</h1>
+      <div class="menu-currency">◆ <span id="menuShards">0</span></div>
+      <button class="menu-btn" id="btnGoLocations">Играть</button>
+      <button class="menu-btn ghost" id="btnGoUpgrade">Прокачка</button>
+      <button class="menu-btn ghost" id="btnGoSettings">Настройки</button>
+    </div>
+    <div id="menuLocations" hidden>
+      <h1>Выбор локации</h1>
+      <div class="loc-carousel">
+        <button class="loc-arrow" id="locPrev">&lsaquo;</button>
+        <div class="loc-card" id="locCard">
+          <div class="loc-name" id="locName"></div>
+          <div class="loc-desc" id="locDesc"></div>
+        </div>
+        <button class="loc-arrow" id="locNext">&rsaquo;</button>
+      </div>
+      <button class="menu-btn" id="btnStartRun">Играть</button>
+      <button class="menu-btn ghost" id="btnLocBack">Назад</button>
+    </div>
+    <div id="menuUpgrade" hidden>
+      <h1>Прокачка</h1>
+      <div class="menu-currency">◆ <span id="upgShards">0</span></div>
+      <div id="upgradeList"></div>
+      <button class="menu-btn ghost" id="btnUpgBack">Назад</button>
+    </div>
+    <div id="menuSettings" hidden>
+      <h1>Настройки</h1>
+      <div class="upg-row" style="border-top:none"><span class="name">Звук</span><button id="btnSound">...</button></div>
+      <div class="loc-desc" style="margin-top:14px">Способностей со звуком в игре пока нет — переключатель на будущее.</div>
+      <button class="menu-btn ghost" id="btnSetBack" style="margin-top:14px">Назад</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
 <script>
 (function(){
@@ -572,7 +636,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.11';
+  const GAME_VERSION = '1.0.12';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -1015,6 +1079,97 @@
   const CUSTOM_ASSETS = { 'tex-player': 'assets/character.png', 'tex-icicle': 'assets/icicle.png' };
   const ASSET_BASE_SIZE = { 'tex-player': 24, 'tex-icicle': 36 };
   let texFit = {};
+  // ── Главное меню + метапрокачка (1.0.12) ──────────────────────────────
+  // Валюта и уровни прокачки живут в localStorage — прогресс привязан к ЭТОМУ браузеру/
+  // устройству, не к аккаунту (аккаунтов и бэкенда для них у нас нет). Начисляется от
+  // опыта, собранного ЗА ЗАБЕГ (run.xpCollected), не от текущего уровня — то есть даже
+  // ранняя смерть даёт что-то, а не ноль.
+  const META_KEY = 'ca_meta_v1';
+  const META_XP_TO_SHARD = 2500;   // стартовая прикидка, поправим по телеметрии/ощущениям
+  const META_UPG = {
+    dmg:    { label: 'Урон',                    max: 5, step: 0.02, cost: (lv) => 6 + lv * 4 },
+    spd:    { label: 'Скорость передвижения',    max: 5, step: 4,    cost: (lv) => 6 + lv * 4 },
+    cd:     { label: 'Перезарядка способностей', max: 5, step: 0.02, cost: (lv) => 8 + lv * 5 },
+    hp:     { label: 'Макс. здоровье',           max: 5, step: 0.03, cost: (lv) => 6 + lv * 4 },
+    pickup: { label: 'Радиус подбора опыта',     max: 5, step: 8,    cost: (lv) => 5 + lv * 3 }
+  };
+  function defaultMeta(){ return { shards: 0, dmg: 0, spd: 0, cd: 0, hp: 0, pickup: 0, sound: true }; }
+  function loadMeta(){
+    try {
+      const raw = localStorage.getItem(META_KEY);
+      return Object.assign(defaultMeta(), raw ? JSON.parse(raw) : {});
+    } catch (e){ return defaultMeta(); }
+  }
+  function saveMeta(){ try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e){} }
+  let meta = loadMeta();
+
+  // Локации — пока только одна настоящая, остальные заглушки под будущие карты.
+  const LOCATIONS = [
+    { name: 'Руины Проклятия', desc: 'Текущий забег: заброшенные руины, три арены стражей, событие «Разлом».', locked: false },
+    { name: 'Ледяные пустоши', desc: 'Скоро.', locked: true },
+    { name: 'Кровавые топи', desc: 'Скоро.', locked: true }
+  ];
+  let curLocation = 0;
+
+  function showMenuPanel(name){
+    ['menuHome', 'menuLocations', 'menuUpgrade', 'menuSettings'].forEach((id) => {
+      document.getElementById(id).hidden = (id !== name);
+    });
+    if (name === 'menuUpgrade') renderUpgradeList();
+    if (name === 'menuLocations') renderLocation();
+    if (name === 'menuSettings') renderSoundButton();
+    document.getElementById('menuShards').textContent = String(meta.shards);
+  }
+  function renderLocation(){
+    const loc = LOCATIONS[curLocation];
+    document.getElementById('locName').textContent = loc.name + (loc.locked ? ' (заперто)' : '');
+    document.getElementById('locDesc').textContent = loc.desc;
+    document.getElementById('locCard').classList.toggle('locked', loc.locked);
+    document.getElementById('locPrev').disabled = curLocation === 0;
+    document.getElementById('locNext').disabled = curLocation === LOCATIONS.length - 1;
+    document.getElementById('btnStartRun').disabled = loc.locked;
+  }
+  function renderUpgradeList(){
+    document.getElementById('upgShards').textContent = String(meta.shards);
+    const html = Object.keys(META_UPG).map((key) => {
+      const def = META_UPG[key];
+      const lv = meta[key] || 0;
+      const maxed = lv >= def.max;
+      const cost = def.cost(lv);
+      const affordable = !maxed && meta.shards >= cost;
+      return '<div class="upg-row"><span class="name">' + def.label + '</span>' +
+        '<span class="lv">' + lv + '/' + def.max + '</span>' +
+        '<button data-upg="' + key + '"' + ((maxed || !affordable) ? ' disabled' : '') + '>' + (maxed ? 'МАКС' : ('◆' + cost)) + '</button></div>';
+    }).join('');
+    document.getElementById('upgradeList').innerHTML = html;
+    document.getElementById('upgradeList').querySelectorAll('button[data-upg]').forEach((btn) => {
+      btn.onclick = () => buyMetaUpgrade(btn.dataset.upg);
+    });
+  }
+  function buyMetaUpgrade(key){
+    const def = META_UPG[key];
+    const lv = meta[key] || 0;
+    if (lv >= def.max) return;
+    const cost = def.cost(lv);
+    if (meta.shards < cost) return;
+    meta.shards -= cost;
+    meta[key] = lv + 1;
+    saveMeta();
+    renderUpgradeList();
+  }
+  function renderSoundButton(){
+    document.getElementById('btnSound').textContent = meta.sound ? 'Вкл' : 'Выкл';
+  }
+  // Применяется один раз при старте забега — ПОВЕРХ стандартных характеристик,
+  // независимо от caps артефактов (это отдельный слой метапрокачки, не забеговый).
+  function applyMetaBonuses(){
+    stats.moveSpeed += (meta.spd || 0) * META_UPG.spd.step;
+    stats.maxHp = Math.round(stats.maxHp * (1 + (meta.hp || 0) * META_UPG.hp.step));
+    stats.pickupRadius += (meta.pickup || 0) * META_UPG.pickup.step;
+    globalDmgMult += (meta.dmg || 0) * META_UPG.dmg.step;
+    globalCooldownMult = Math.max(0.5, globalCooldownMult - (meta.cd || 0) * META_UPG.cd.step);
+  }
+
   function preload(){
     Object.keys(CUSTOM_ASSETS).forEach((k) => this.load.image(k, CUSTOM_ASSETS[k]));
   }
@@ -1034,6 +1189,7 @@
   function create(){
     scene = this;
     stats = { maxHp: 100, moveSpeed: PLAYER_SPEED, pickupRadius: 100, critChance: 0, critMult: 1.5, evasion: 0 };
+    applyMetaBonuses();
     owned = { fire: 1 };
     evolved = {};
     evoLevel = {};
@@ -1088,9 +1244,11 @@
     attached = [];
     spawnTimer = 0;
     nextSpawnIn = 1500;
-    running = true;
+    running = false;   // геймплей стоит, пока в меню не нажмут «Играть»
     paused = false;
     pauseReason = null;
+    document.getElementById('mainMenu').classList.add('show');
+    showMenuPanel('menuHome');
     lastHitAt = -99999;
     lastHpOrbAt = -99999;
     graceUntil = -99999;
@@ -3460,6 +3618,8 @@
   function doGameOver(){
     running = false;
     sendRun('death');
+    const earned = Math.floor((run && run.xpCollected || 0) / META_XP_TO_SHARD);
+    if (earned > 0){ meta.shards += earned; saveMeta(); }
     player.setVelocity(0, 0);
     document.getElementById('finalTime').textContent = formatTime(runMs);
     document.getElementById('finalKills').textContent = String(killCount);
@@ -3783,6 +3943,20 @@
     btnFull.hidden = false;
     btnFull.onclick = () => game.scale.toggleFullscreen();
   }
+  document.getElementById('btnGoLocations').onclick = () => showMenuPanel('menuLocations');
+  document.getElementById('btnLocBack').onclick = () => showMenuPanel('menuHome');
+  document.getElementById('btnGoUpgrade').onclick = () => showMenuPanel('menuUpgrade');
+  document.getElementById('btnUpgBack').onclick = () => showMenuPanel('menuHome');
+  document.getElementById('btnGoSettings').onclick = () => showMenuPanel('menuSettings');
+  document.getElementById('btnSetBack').onclick = () => showMenuPanel('menuHome');
+  document.getElementById('btnSound').onclick = () => { meta.sound = !meta.sound; saveMeta(); renderSoundButton(); };
+  document.getElementById('locPrev').onclick = () => { if (curLocation > 0){ curLocation -= 1; renderLocation(); } };
+  document.getElementById('locNext').onclick = () => { if (curLocation < LOCATIONS.length - 1){ curLocation += 1; renderLocation(); } };
+  document.getElementById('btnStartRun').onclick = () => {
+    if (LOCATIONS[curLocation].locked) return;
+    document.getElementById('mainMenu').classList.remove('show');
+    running = true;
+  };
   window.addEventListener('pagehide', () => { if (running) sendRun('exit'); });
   window.addEventListener('resize', () => {
     game.scale.resize(window.innerWidth, window.innerHeight);
