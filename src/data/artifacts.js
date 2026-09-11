@@ -27,7 +27,7 @@
     focuslens: { name: 'Линза фокуса',    rarity: R.c, color: 0xd94f4f, desc: '+5% шанс крита', apply: () => { stats.critChance += 0.05; } },
     keenedge:  { name: 'Острая грань',    rarity: R.c, color: 0xd67ee0, desc: '+25% множитель крита', apply: () => { stats.critMult += 0.25; } },
     callcharm: { name: 'Талисман зова',   rarity: R.c, color: 0x55d6c2, desc: '+22 радиус подбора опыта', apply: () => { stats.pickupRadius += 22; } },
-    huntmark:  { name: 'Метка охоты',     rarity: R.c, color: 0xc9a15a, desc: '+6% опыта с кристаллов', apply: () => { xpValueMult += 0.06; } },
+    huntmark:  { name: 'Метка охоты',     rarity: R.c, color: 0xc9a15a, desc: '+6% опыта с обычных кристаллов', apply: () => { xpValueMult += 0.06; } },
     emberstone:{ name: 'Уголёк',          rarity: R.c, color: 0xff7a3d, desc: 'Огненные заклинания +14% урона', apply: () => { artElem.fire += 0.14; } },
     frostpane: { name: 'Гранёный иней',   rarity: R.c, color: 0x9fe8ff, desc: 'Ледяные заклинания +14% урона', apply: () => { artElem.ice += 0.14; } },
     stormcore: { name: 'Грозовое ядро',   rarity: R.c, color: 0xf5e14a, desc: 'Молния +14% урона', apply: () => { artElem.lightning += 0.14; } },

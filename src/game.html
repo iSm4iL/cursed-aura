@@ -572,7 +572,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.10';
+  const GAME_VERSION = '1.0.11';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -588,13 +588,14 @@
     damage: { name: 'Руна ярости', color: 0xe2495c, duration: 10000 },
     invuln: { name: 'Руна неуязвимости', color: 0xd9b35c, duration: 8000 },
     timestop: { name: 'Руна времени', color: 0x8a4fd9, duration: 6000 },
-    bounty: { name: 'Руна изобилия', color: 0xfff2c9, instant: true }
+    bounty: { name: 'Руна изобилия', color: 0xfff2c9, duration: 12000 }
   };
   const RUNE_IDS = Object.keys(RUNES);
   const RUNE_SPAWN_MIN_MS = 20000;
   const RUNE_SPAWN_MAX_MS = 40000;
   const RUNE_LIFETIME_MS = 20000;
   const BOUNTY_XP_AMOUNT = 20;
+  const BOUNTY_XP_MULT = 1.75;
 
   // Событие «Разлом»: единственный способ получить предмет, кроме босса. Появляется
   // далеко от игрока — смысл события в том, чтобы заставить двигаться по карте.
@@ -616,11 +617,11 @@
   // у игрока 3-4 способности и ~10 уровень — полный состав (10 усиленных + 20 рядовых)
   // поверх уже накопившейся на карте толпы там гарантированно убивает. К волне 2-3
   // состав выходит на заявленные числа и дальше растёт.
-  const ARENA_ENHANCED = 7;
-  const ARENA_ENHANCED_STEP = 4;
-  const ARENA_NORMAL = 22;
-  const ARENA_NORMAL_STEP = 7;
-  const ARENA_REINFORCE_ARC = Math.PI * 1.15;
+  const ARENA_ENHANCED = 10;
+  const ARENA_ENHANCED_STEP = 6;
+  const ARENA_NORMAL = 30;
+  const ARENA_NORMAL_STEP = 10;
+  const ARENA_REINFORCE_ARC = Math.PI * 2;   // со всех сторон — числом, а не с одной «безопасной» стороны
 
   const TILE = 128;
 
@@ -786,6 +787,7 @@
   let arenaRewardLevel = 1;   // уровень на СТАРТ арены — награда считается от него, не от текущего
   let bossCenter = { x: 0, y: 0 };
   let arenaBosses = [];
+  let arenaLegendaryOnly = false;   // 3-я арена (эво-анлок) — награда только из легендарных
   let riftNode = null;
   let riftMarker = null;
   let riftFight = false;
@@ -903,6 +905,16 @@
     g.strokePath();
     g.fillStyle(0xffffff, 0.7);
     g.fillRect(len * 0.14, wid * 0.42, len * 0.5, 1.6);
+    g.generateTexture(key, len, wid);
+    g.destroy();
+  }
+  function makeBulletTexture(key, len, wid){
+    const g = new Phaser.GameObjects.Graphics(scene);
+    const r = wid / 2;
+    g.fillStyle(0xffffff, 0.95);
+    g.fillRoundedRect(0, 0, len, wid, r);
+    g.fillStyle(0xffffff, 0.55);
+    g.fillRoundedRect(len * 0.12, wid * 0.28, len * 0.62, wid * 0.44, r * 0.6);
     g.generateTexture(key, len, wid);
     g.destroy();
   }
@@ -1118,6 +1130,7 @@
     makeCircleTexture('tex-elder', 40, 0x5a1fb0, 0xffd700);
     makeSparkStarTexture('tex-bolt', 6);
     makeSunTexture('tex-sun', 16);
+    makeBulletTexture('tex-bullet', 28, 9);
     makeDiamondTexture('tex-spark', 10, 0x55d6c2, 0xffffff);
     makeDiamondTexture('tex-xp', 10, 0xd9b35c, 0xfff2c9);
     makeDiamondTexture('tex-rune', 18, 0xffffff, 0xffffff);
@@ -1131,7 +1144,7 @@
     makeCircleTexture('tex-saw', 22, 0xdfe6f0, 0x8fa0b8);
     makeRectTexture('tex-wallblock', 26, 26, 0xb9c2d0);
     makeCapsuleTexture('tex-slash', 52, 260, 0xffffff, 0xffffff);
-    setupTexture('tex-icicle', ASSET_BASE_SIZE['tex-icicle'], () => makeIcicleTexture('tex-icicle', 36, 13));
+    setupTexture('tex-icicle', ASSET_BASE_SIZE['tex-icicle'], () => makeIcicleTexture('tex-icicle', 36, 16));
     makeCapsuleTexture('tex-dragon', 380, 54, 0xffffff, 0xffffff);
     makeCapsuleTexture('tex-rocket', 30, 13, 0xffffff, 0xffffff);
     makeCapsuleTexture('tex-gust', 96, 68, 0xffffff, 0xffffff);
@@ -1457,8 +1470,8 @@
       markZones.push({ x: player.x, y: player.y, radius: cfg.radius, amp: cfg.amp, until: elapsedMs + cfg.duration, img: ring, follow: true });
     }
     // Само солнце — отдельный объект над головой, чтобы источник эффекта был виден.
-    const core = attachToPlayer(scene.add.image(player.x, player.y, 'tex-sun').setTint(color).setScale(1.7).setDepth(44), -40);
-    scene.tweens.add({ targets: core, scale: 3.1, yoyo: true, repeat: -1, duration: cfg.tickMs, ease: 'Sine.easeInOut' });
+    const core = attachToPlayer(scene.add.image(player.x, player.y, 'tex-sun').setTint(color).setScale(1.1).setDepth(44), -40);
+    scene.tweens.add({ targets: core, scale: 1.5, yoyo: true, repeat: -1, duration: cfg.tickMs, ease: 'Sine.easeInOut' });
     activeAuras.push({ img, core, cfg, color, src: weaponId, until: elapsedMs + cfg.duration, nextTick: elapsedMs });
   }
   function updateAuras(){
@@ -2630,9 +2643,10 @@
     // кристалл своего размера. Опыт с арены собирается как обычно, по орбам.
     if (tier.xpPct){
       const reward = Math.max(xpNeeded(arenaRewardLevel) * tier.xpPct, tier.xpMin || 0);
-      spawnXpOrb(ex, ey, Math.round(reward * xpValueMult), 'large');
+      spawnXpOrb(ex, ey, Math.round(reward), 'large');
     } else if (!enemy.arenaFoe) {
-      spawnXpOrb(ex, ey, Math.round(XP_ORBS[tier.orb].value * xpValueMult * xpScale()), tier.orb);
+      const orbMult = tier.orb === 'small' ? xpValueMult : 1;
+      spawnXpOrb(ex, ey, Math.round(XP_ORBS[tier.orb].value * orbMult * xpScale()), tier.orb);
     }
     if (tier.dropsItem) spawnItemDrop(ex, ey);
     if (Math.random() < (HP_ORB_CHANCE[enemy.tier] || 0) && elapsedMs - lastHpOrbAt >= HP_ORB_MIN_INTERVAL_MS){
@@ -2704,7 +2718,8 @@
   // Артефакт (редкость 'artifact') даёт только босс — уникальный выбор из трёх, эффект
   // заметно весомее обычного предмета с элиты.
   function openArtifactChoice(){
-    const available = ARTIFACT_LOOT_IDS.filter((id) => !lootCounts[id]);
+    const legendIds = LOOT_IDS.filter((id) => LOOT[id].rarity === 'legendary' && !lootCounts[id]);
+    const available = (arenaLegendaryOnly && legendIds.length) ? legendIds : ARTIFACT_LOOT_IDS.filter((id) => !lootCounts[id]);
     if (!available.length){
       grantXp(BOUNTY_XP_AMOUNT * 3);
       return;
@@ -2841,6 +2856,7 @@
   }
 
   function grantXp(amount){
+    if (buffActive('bounty')) amount = Math.round(amount * BOUNTY_XP_MULT);
     xp += amount;
     if (run) run.xpCollected += amount;
     while (xp >= xpNeeded(level)){
@@ -3222,8 +3238,6 @@
         });
       });
       spawnPulseRing(player.x, player.y, 260, 0x55d6c2);
-    } else if (id === 'bounty'){
-      grantXp(BOUNTY_XP_AMOUNT);
     } else {
       activeBuffs[id] = elapsedMs + cfg.duration;
     }
@@ -3276,7 +3290,7 @@
     // боссы и подкрепление разворачиваются на противоположной от игрока стороне,
     // и у него есть куда маневрировать.
     const fa = facingAngle();
-    bossCenter = { x: player.x + Math.cos(fa) * BOSS_RADIUS * 0.45, y: player.y + Math.sin(fa) * BOSS_RADIUS * 0.45 };
+    bossCenter = { x: player.x + Math.cos(fa) * BOSS_RADIUS * 0.1, y: player.y + Math.sin(fa) * BOSS_RADIUS * 0.1 };
 
     // Врагов, оказавшихся внутри барьера, НЕ удаляем: игрок заперт вместе с ними и
     // должен разобраться со всеми. Удаляем только оставшихся снаружи — до них уже
@@ -3329,6 +3343,7 @@
     // будущие боссы — иначе после пары эволюций игра превращается в прогулку.
     waveLevel += 1;
     showToast('Волна ' + (waveLevel + 1) + ': мир стал опаснее');
+    arenaLegendaryOnly = !evoUpgradesUnlocked && waveLevel >= EVO_UNLOCK_WAVE;
     if (!evoUpgradesUnlocked && waveLevel >= EVO_UNLOCK_WAVE){
       evoUpgradesUnlocked = true;
       scene.time.delayedCall(1200, () => showToast('Эволюции теперь растут до 10 уровня'));

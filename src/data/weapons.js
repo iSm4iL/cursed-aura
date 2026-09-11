@@ -63,7 +63,7 @@
         { count: 5, dmg: 100, radius: 98, freeze: 900, cooldown: 850, offset: [40, 190] }
       ],
       evolutions: [
-        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек, каждая прошивает линию врагов насквозь', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 999, life: 1500, cooldown: 2800, scale: 2.3, charge: 600, projTex: 'tex-icicle' } },
+        { name: 'Ледяное сердце', desc: 'Сфера над головой копит силу и выпускает 10 сосулек, каждая прошивает линию врагов насквозь', type: 'radialvolley', level6: { count: 10, dmg: 52, pierce: 999, life: 1500, cooldown: 2800, scale: 1.9, charge: 600, projTex: 'tex-icicle' } },
         { name: 'Чёрный лёд', desc: 'Постоянная область вокруг тебя, ощутимо замедляет врагов', type: 'slowarea', level6: { radius: 210, slowMult: 0.65, duration: 2000, cooldown: 1500 } },
         { name: 'Иний', desc: 'Иний оседает на крупном враге: зона замедляет, все в ней получают на 20% больше урона и понемногу тают', type: 'markzone', level6: { radius: 150, amp: 1.2, slowMult: 0.75, slowMs: 1200, pctMaxHp: 0.015, tickMs: 900, duration: 5000, cooldown: 4000 } }
       ]
@@ -131,11 +131,11 @@
     metal: {
       name: 'Металлические шипы', color: 0xb9c2d0, element: 'metal', type: 'zone',
       levels: [null,
-        { dmg: 26, radius: 110, tickMs: 520, duration: 3000, cooldown: 2600, offset: [70, 180], summary: 'Неподалёку от тебя из земли лезут шипы и рвут всех, кто попал в них' },
-        { dmg: 34, radius: 125, tickMs: 510, duration: 3200, cooldown: 2500, offset: [70, 190] },
-        { dmg: 44, radius: 140, tickMs: 500, duration: 3400, cooldown: 2400, offset: [70, 200] },
-        { dmg: 56, radius: 152, tickMs: 490, duration: 3600, cooldown: 2350, offset: [70, 210] },
-        { dmg: 70, radius: 162, tickMs: 480, duration: 3800, cooldown: 2350, offset: [70, 220] }
+        { dmg: 32, radius: 85, tickMs: 520, duration: 3000, cooldown: 2600, offset: [70, 180], summary: 'Неподалёку от тебя из земли лезут шипы и рвут всех, кто попал в них' },
+        { dmg: 41, radius: 95, tickMs: 510, duration: 3200, cooldown: 2500, offset: [70, 190] },
+        { dmg: 53, radius: 108, tickMs: 500, duration: 3400, cooldown: 2400, offset: [70, 200] },
+        { dmg: 67, radius: 118, tickMs: 490, duration: 3600, cooldown: 2350, offset: [70, 210] },
+        { dmg: 84, radius: 126, tickMs: 480, duration: 3800, cooldown: 2350, offset: [70, 220] }
       ],
       evolutions: [
         { name: 'Монументы', desc: '6 столбов вырастают из земли, пять секунд бьют долей здоровья и держат врагов замедленными', type: 'monuments', level6: { count: 6, pctMaxHp: 0.05, dmg: 20, radius: 95, orbit: 165, duration: 3000, tickMs: 700, slowMult: 0.5, slowMs: 900, cooldown: 9000 } },
@@ -161,16 +161,16 @@
     airbullet: {
       name: 'Воздушная пуля', color: 0xbfe9ff, element: 'air', type: 'volley',
       levels: [null,
-        { count: 1, dmg: 36, pierce: 0, cooldown: 1000, summary: 'Быстрая воздушная пуля летит в ближайшего врага' },
-        { count: 2, dmg: 46, pierce: 0, cooldown: 960 },
-        { count: 3, dmg: 58, pierce: 1, cooldown: 920 },
-        { count: 4, dmg: 72, pierce: 1, cooldown: 880 },
-        { count: 5, dmg: 90, pierce: 2, cooldown: 850 }
+        { count: 1, dmg: 36, pierce: 0, cooldown: 1000, projTex: 'tex-bullet', summary: 'Быстрая воздушная пуля летит в ближайшего врага' },
+        { count: 2, dmg: 46, pierce: 0, cooldown: 960, projTex: 'tex-bullet' },
+        { count: 3, dmg: 58, pierce: 1, cooldown: 920, projTex: 'tex-bullet' },
+        { count: 4, dmg: 72, pierce: 1, cooldown: 880, projTex: 'tex-bullet' },
+        { count: 5, dmg: 90, pierce: 2, cooldown: 850, projTex: 'tex-bullet' }
       ],
       evolutions: [
         { name: 'Пушка', desc: 'Плотный поток воздуха идёт вперёд, расталкивая всех с дороги', type: 'forwardvolley', level6: { count: 1, dmg: 90, pierce: 8, cooldown: 1600, knockback: 150, scale: 1.5, projTex: 'tex-gust', alpha: 0.55 } },
         { name: 'Разрез', desc: 'Вместо пуль — режущие волны вперёд: узкие у тебя и широкие вдали', type: 'slash', level6: { count: 5, dmg: 120, speed: 560, life: 900, w0: 30, w1: 150, gap: 140, cooldown: 2800 } },
-        { name: 'Святая пуля', desc: 'Тяжёлые очищающие пули пронзают отряд насквозь и снимают с врагов усиления', level6: { count: 5, dmg: 125, pierce: 8, cooldown: 700, dispel: true } }
+        { name: 'Святая пуля', desc: 'Тяжёлые очищающие пули пронзают отряд насквозь и снимают с врагов усиления', level6: { count: 5, dmg: 125, pierce: 8, cooldown: 700, dispel: true, projTex: 'tex-bullet' } }
       ]
     },
     barrier: {
