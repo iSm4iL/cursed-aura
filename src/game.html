@@ -587,115 +587,150 @@
   }
 
   /* ===================================================================== *
-   * Оформление «тёмное фэнтези» по референсу HUD-кита (refs/ref_hud.jpg): *
-   * угольная плашка, жёсткий тёмный контур, фаска в 1px и золотая нить    *
-   * по краю; заполнение полос — багровое. Блок идёт последним и намеренно *
-   * перекрывает базовые правила: так вся смена шкуры лежит в одном месте, *
-   * а не размазана по тридцати селекторам.                                *
-   * Правила стиля: жёсткие края, радиус не больше 3px, никаких мягких     *
-   * теней и плавных градиентов — иначе теряется пиксельная подача.        *
+   * Шкура «тёмное фэнтези»: ЧЁРНОЕ + КОСТЬ + красный как редкий акцент,     *
+   * латунь на рамках и жёлтая полоса опыта. Первый заход был залит багрянцем *
+   * сплошь — на зелёном поле это не легло, поэтому красный оставлен только   *
+   * там, где означает опасность/важность, а массу держат уголь и кость.      *
+   * Рамки резные: латунные уголки и гранёный «камень» по центру верхней      *
+   * кромки — по референсу refs/ref_hud.jpg. Края жёсткие, радиус <= 3px,     *
+   * мягких теней нет: иначе рассыпается пиксельная подача.                   *
    * ===================================================================== */
   :root{
-    --plate:        #1a191e;
-    --plate-hi:     #33333c;
-    --plate-lo:     #0b0a0e;
-    --brass:        #c9953f;
-    --brass-hi:     #e8c064;
-    --brass-lo:     #7d5f22;
-    --crimson:      #8e2137;
-    --crimson-hi:   #c62e40;
-    --crimson-lo:   #480e26;
-    /* Фаска: светлая грань сверху-слева, тёмная снизу-справа. */
-    --bevel: inset 1px 1px 0 #ffffff14, inset -1px -1px 0 #00000080;
+    --plate:      #0f1013;
+    --plate-up:   #191a1f;
+    --plate-lo:   #050507;
+    --bone:       #d8d2c2;
+    --bone-dim:   #8d897e;
+    --brass:      #c9a049;
+    --brass-hi:   #f0cf7a;
+    --brass-lo:   #6d5520;
+    --blood:      #a81f2d;
+    --blood-hi:   #e23b3b;
+    --bevel: inset 1px 1px 0 #ffffff12, inset -1px -1px 0 #00000090;
   }
 
   /* --- окна: пауза, смерть, выбор способности, артефакт, слияние, меню --- */
   .card{
-    background: linear-gradient(180deg, #1e1d24, var(--plate));
+    position: relative;
+    background: linear-gradient(180deg, var(--plate-up), var(--plate));
     border: 2px solid var(--plate-lo);
-    border-radius: 3px;
-    box-shadow: var(--bevel), 0 0 0 1px var(--brass-lo), 0 18px 46px #000000a6;
-    padding: 22px clamp(18px, 5vw, 34px);
+    border-radius: 2px;
+    box-shadow: var(--bevel), 0 0 0 1px var(--brass-lo), 0 20px 50px #000000b3;
+    padding: 24px clamp(20px, 5vw, 34px);
   }
-  .card h1{ color: var(--brass-hi); }
+  /* Латунные уголки — восемь полосок фоном, без лишней разметки. */
+  .card::before{
+    content: ''; position: absolute; inset: 5px; pointer-events: none;
+    background:
+      linear-gradient(var(--brass), var(--brass)) left top / 14px 2px no-repeat,
+      linear-gradient(var(--brass), var(--brass)) left top / 2px 14px no-repeat,
+      linear-gradient(var(--brass), var(--brass)) right top / 14px 2px no-repeat,
+      linear-gradient(var(--brass), var(--brass)) right top / 2px 14px no-repeat,
+      linear-gradient(var(--brass), var(--brass)) left bottom / 14px 2px no-repeat,
+      linear-gradient(var(--brass), var(--brass)) left bottom / 2px 14px no-repeat,
+      linear-gradient(var(--brass), var(--brass)) right bottom / 14px 2px no-repeat,
+      linear-gradient(var(--brass), var(--brass)) right bottom / 2px 14px no-repeat;
+    opacity: 0.75;
+  }
+  /* Гранёный камень по центру верхней кромки. */
+  .card::after{
+    content: ''; position: absolute; top: -6px; left: 50%; width: 10px; height: 10px;
+    transform: translateX(-50%) rotate(45deg);
+    background: linear-gradient(135deg, var(--brass-hi), var(--brass));
+    box-shadow: 0 0 0 2px var(--plate-lo);
+    pointer-events: none;
+  }
+  .card h1{
+    color: var(--bone);
+    border-bottom: 1px solid var(--brass-lo);
+    box-shadow: 0 3px 0 -2px var(--brass-lo);     /* вторая, тонкая черта — «резьба» */
+    padding-bottom: 8px;
+  }
   .levelcard h1{ color: var(--brass-hi); }
-  .pausecard h1{ color: var(--crimson-hi); }
+  .pausecard h1{ color: var(--bone); }
+  .deathcard h1{ color: var(--blood-hi); }
 
   /* --- кнопки --- */
   .menu-btn, .upgrade-btn, .fusion-yes, .fusion-no, .tbtn, .loc-arrow, .upg-row button{
-    border-radius: 3px;
+    border-radius: 2px;
     box-shadow: var(--bevel);
   }
   .menu-btn{
-    background: linear-gradient(180deg, #d8a94b, var(--brass));
+    background: linear-gradient(180deg, var(--brass-hi), var(--brass));
     border: 2px solid var(--plate-lo);
-    color: #241704;
-    text-shadow: 0 1px 0 #ffffff40;
+    color: #1d1605;
+    text-shadow: 0 1px 0 #ffffff50;
   }
   .menu-btn.ghost, .tbtn, .loc-arrow, .upg-row button{
-    background: linear-gradient(180deg, #26252c, var(--plate));
+    background: linear-gradient(180deg, var(--plate-up), var(--plate));
     border: 2px solid var(--plate-lo);
-    color: #c9c6bd;
+    color: var(--bone-dim);
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
-  .menu-btn.ghost:hover, .loc-arrow:hover:enabled, .upg-row button:hover:enabled{ border-color: var(--brass-lo); }
-  .loc-arrow{ border-radius: 3px; }
-  .upgrade-btn{ background: linear-gradient(180deg, #23222a, #17161b); border-color: var(--plate-lo); }
+  .menu-btn.ghost:hover, .loc-arrow:hover:enabled, .upg-row button:hover:enabled,
+  .upgrade-btn:hover{ border-color: var(--brass-lo); color: var(--bone); }
+  .upgrade-btn{ background: linear-gradient(180deg, #16171c, #101115); border-color: var(--plate-lo); }
 
   /* --- карточки выбора (класс, локация) --- */
   .loc-card{
-    background: linear-gradient(180deg, #191820, #121118);
+    background: linear-gradient(180deg, #131419, #0d0e12);
     border: 2px solid var(--plate-lo);
-    border-radius: 3px;
+    border-radius: 2px;
     box-shadow: var(--bevel), 0 0 0 1px #ffffff0d;
   }
+  .loc-name{ color: var(--bone); }
 
-  /* --- полоса опыта: тёмный жёлоб + багровое заполнение с золотой кромкой --- */
+  /* --- полоса опыта: ЖЁЛТАЯ, как просили; красный тут не читался --- */
   .xpstrip{
     height: 12px;
-    background: linear-gradient(180deg, #101016, #07070b);
+    background: linear-gradient(180deg, #0b0c0f, #07070a);
     border-bottom: 2px solid var(--plate-lo);
     box-shadow: var(--bevel);
   }
   .xpfill{
-    background: linear-gradient(180deg, var(--crimson-hi) 0 40%, var(--crimson) 40% 100%);
+    background: linear-gradient(180deg, #ffe08a 0 38%, var(--brass) 38% 100%);
     border-right: 1px solid var(--brass-hi);
-    box-shadow: inset 0 1px 0 #ffffff35;
+    box-shadow: inset 0 1px 0 #ffffff45;
   }
 
-  /* --- верхняя панель: уровень и таймер на общей плашке --- */
+  /* --- верхняя панель --- */
   .topbar{
     background: none;
-    padding: 8px 14px;
+    padding: 8px 16px;
     margin-top: 6px;
     border: 2px solid var(--plate-lo);
-    border-radius: 3px;
-    background-image: linear-gradient(180deg, #1e1d24e6, #12111799);
+    border-radius: 2px;
+    background-image: linear-gradient(180deg, #14151ae6, #0b0c0fcc);
     box-shadow: var(--bevel), 0 0 0 1px var(--brass-lo), 0 6px 18px #0009;
   }
   .levelbadge{
-    border-radius: 3px;
-    background: linear-gradient(180deg, var(--crimson), var(--crimson-lo));
+    border-radius: 2px;
+    background: linear-gradient(180deg, #1b1c22, #101116);
     border: 2px solid var(--plate-lo);
-    color: #ffe3b0;
-    box-shadow: var(--bevel);
+    color: var(--brass-hi);
+    box-shadow: var(--bevel), 0 0 0 1px var(--brass-lo);
   }
-  .timer{ color: #e6e2d6; text-shadow: 0 2px 0 #000; }
+  .timer{ color: var(--bone); text-shadow: 0 2px 0 #000; }
   .nukechip{
-    border-radius: 3px; background: var(--plate); border: 2px solid var(--plate-lo);
+    border-radius: 2px; background: var(--plate); border: 2px solid var(--plate-lo);
     color: var(--brass); box-shadow: var(--bevel);
   }
-  .nukechip.ready{ color: #ffe08a; border-color: var(--brass-lo); }
+  .nukechip.ready{ color: var(--brass-hi); border-color: var(--brass-lo); }
 
   /* --- подсказка и чипы баффов --- */
   .hint, .buff-chip{
-    background: linear-gradient(180deg, #1b1a21e8, #101016e8);
+    background: linear-gradient(180deg, #14151ae8, #0b0c0fe8);
     border: 2px solid var(--plate-lo);
-    border-radius: 3px;
+    border-radius: 2px;
     box-shadow: var(--bevel);
     backdrop-filter: none;
   }
   .hint b{ color: var(--brass-hi); }
+
+  /* --- название игры: кость + кровь, латунный скол между ними --- */
+  .wordmark .w-cursed{ color: var(--bone); text-shadow: 0 0 22px #d8d2c255, 0 2px 14px #000; }
+  .wordmark .w-aura{ color: var(--blood-hi); text-shadow: 0 0 24px #e23b3b66, 0 2px 14px #000; }
+  .wordmark .w-crack{ background: linear-gradient(180deg, var(--brass-hi), var(--blood)); }
 </style>
 
 <div id="game"></div>
@@ -849,7 +884,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.18';
+  const GAME_VERSION = '1.0.19';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -1391,7 +1426,7 @@
   // fitPlayerTexture) — присланный арт мага рисуется в полный рост с рваным подолом
   // и лентами, и если гнать его в 24px (размер хитбокса), от фигуры остаётся пятно.
   // Плотная часть силуэта примерно совпадает с хитбоксом, ткань торчит наружу.
-  const ASSET_BASE_SIZE = { 'tex-player': 36, 'tex-icicle': 36 };
+  const ASSET_BASE_SIZE = { 'tex-player': 54, 'tex-icicle': 36 };
   let texFit = {};
   // ── Главное меню + метапрокачка (1.0.12) ──────────────────────────────
   // Валюта и уровни прокачки живут в localStorage — прогресс привязан к ЭТОМУ браузеру/
@@ -1468,7 +1503,9 @@
     if (!sky.canvas) return;
     sky.cssW = sky.canvas.clientWidth || window.innerWidth;
     sky.cssH = sky.canvas.clientHeight || window.innerHeight;
-    sky.pix = sky.cssW < 620 ? 2 : 3;              // на телефоне блок мельче, иначе каша
+    // Блок в 3px давал слишком грубую сетку («вижу сетку») — оставляем 2,
+    // на узком экране 1.5 нельзя, поэтому там честная единица.
+    sky.pix = sky.cssW < 520 ? 1 : 2;
     sky.w = Math.ceil(sky.cssW / sky.pix);
     sky.h = Math.ceil(sky.cssH / sky.pix);
     if (!sky.buf){
@@ -1501,19 +1538,7 @@
         warm: Math.random() < 0.22, tw: rnd(0, Math.PI * 2), tws: rnd(0.5, 2.2)
       });
     }
-    // Материки — кластеры пятен вокруг опорных точек. Рисуются плоско, объём даёт
-    // один общий световой градиент поверх диска (см. skyDrawPlanet).
-    sky.land = [];
-    [[20,-25],[8,-48],[38,-8],[52,22],[-18,-50],[-26,28],[-6,104],[34,98],[-28,138],[58,64],[12,150],[-48,-64]]
-      .forEach(([lat, lon], i) => {
-        for (let b = 0, n = 3 + (i % 3); b < n; b++){
-          sky.land.push({ lat: lat + rnd(-13, 13), lon: lon + rnd(-15, 15), rad: rnd(0.09, 0.2) });
-        }
-      });
-    sky.clouds = [];
-    for (let i = 0; i < 26; i++){
-      sky.clouds.push({ lat: rnd(-62, 62), lon: rnd(0, 360), rad: rnd(0.06, 0.14), a: rnd(0.14, 0.4) });
-    }
+    skyBuildWorld();
     // Силуэт руин на горизонте — проявляется на последней ступени наезда.
     sky.skyline = [];
     for (let x = -0.05; x < 1.05; ){
@@ -1522,6 +1547,125 @@
       x += bw + rnd(0.005, 0.05);
     }
     sky.ready = true;
+  }
+
+  // ---- Мир планеты -----------------------------------------------------------
+  // Карта строится ОДИН РАЗ при запуске: трёхмерный шум прямо на сфере (а не на
+  // прямоугольнике), поэтому нет шва по нулевому меридиану и нет каши на полюсах.
+  // Хранится равнопромежуточной картой WORLD_W x WORLD_H: цвет суши/океана, маска
+  // облаков и маска проклятых зон. Дальше она попиксельно натягивается на диск.
+  const WORLD_W = 320, WORLD_H = 160;
+  const SEA = 0.505;                                   // порог «суша/вода»
+  function skyHash3(x, y, z){
+    let n = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453;
+    return n - Math.floor(n);
+  }
+  function skyNoise3(x, y, z){
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+    const xf = x - xi, yf = y - yi, zf = z - zi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+    const c = (dx, dy, dz) => skyHash3(xi + dx, yi + dy, zi + dz);
+    const x00 = c(0,0,0) + (c(1,0,0) - c(0,0,0)) * u;
+    const x10 = c(0,1,0) + (c(1,1,0) - c(0,1,0)) * u;
+    const x01 = c(0,0,1) + (c(1,0,1) - c(0,0,1)) * u;
+    const x11 = c(0,1,1) + (c(1,1,1) - c(0,1,1)) * u;
+    return (x00 + (x10 - x00) * v) + ((x01 + (x11 - x01) * v) - (x00 + (x10 - x00) * v)) * w;
+  }
+  function skyFbm(x, y, z, oct, lac, gain){
+    let a = 0.5, f = 1, sum = 0, norm = 0;
+    for (let i = 0; i < oct; i++){
+      sum += a * skyNoise3(x * f, y * f, z * f);
+      norm += a; a *= (gain || 0.5); f *= (lac || 2.07);
+    }
+    return sum / norm;
+  }
+  function skyBuildWorld(){
+    const W = WORLD_W, H = WORLD_H;
+    sky.world = { w: W, h: H, rgb: new Uint8Array(W * H * 3), cloud: new Uint8Array(W * H),
+                  curse: new Uint8Array(W * H), land: new Uint8Array(W * H) };
+    const wd = sky.world;
+    // Палитра нарочно приглушённая: по арт-библии мир тёмный, цвет отдан магии.
+    const OCEAN_DEEP = [10, 24, 42], OCEAN = [17, 44, 68], SHALLOW = [28, 66, 88];
+    const SAND = [58, 58, 44], GRASS = [32, 56, 38], FOREST = [22, 42, 28];
+    const ROCK = [56, 54, 48], ICE = [150, 162, 170];
+    const seedA = Math.random() * 100, seedB = Math.random() * 100;
+    for (let v = 0; v < H; v++){
+      const lat = (90 - (v + 0.5) * 180 / H) * Math.PI / 180;
+      const cl = Math.cos(lat), sl = Math.sin(lat);
+      for (let u = 0; u < W; u++){
+        const lon = ((u + 0.5) * 360 / W) * Math.PI / 180;
+        const px = cl * Math.sin(lon), py = sl, pz = cl * Math.cos(lon);
+        // Континенты: низкая частота задаёт массивы, высокая рвёт береговую линию.
+        let hgt = skyFbm(px * 1.9 + seedA, py * 1.9, pz * 1.9 + seedA, 5);
+        hgt = hgt * 0.78 + skyFbm(px * 5.5, py * 5.5, pz * 5.5, 3) * 0.22;
+        hgt -= Math.pow(Math.abs(sl), 3) * 0.10;        // полюса чуть ниже: меньше суши
+        const i = v * W + u, o = i * 3;
+        let col;
+        if (hgt > SEA){
+          const t = (hgt - SEA) / (1 - SEA);            // 0 у берега, 1 в горах
+          if (t < 0.06) col = SAND;
+          else if (t < 0.30) col = GRASS;
+          else if (t < 0.62) col = FOREST;
+          else col = ROCK;
+          wd.land[i] = 1;
+        } else {
+          const t = (SEA - hgt) / SEA;
+          col = t < 0.10 ? SHALLOW : (t < 0.35 ? OCEAN : OCEAN_DEEP);
+        }
+        // Ледяные шапки поверх всего у полюсов, с рваной границей.
+        const ice = Math.abs(sl) - 0.80 + skyFbm(px * 7 + 40, py * 7, pz * 7, 2) * 0.16;
+        if (ice > 0) col = ICE;
+        wd.rgb[o] = col[0]; wd.rgb[o+1] = col[1]; wd.rgb[o+2] = col[2];
+        // Облака — своя сфера шума, крутится отдельно от суши.
+        const cd = skyFbm(px * 2.6 + seedB, py * 2.6, pz * 2.6 + seedB, 4);
+        wd.cloud[i] = Math.max(0, Math.min(255, Math.round((cd - 0.50) * 900)));
+        // Проклятые зоны: редкие очаги строго на суше — оттуда и горит.
+        const cu = skyFbm(px * 1.5 - 17, py * 1.5 + 9, pz * 1.5 - 17, 3);
+        wd.curse[i] = wd.land[i] && cu > 0.60 ? Math.min(255, Math.round((cu - 0.60) * 1100)) : 0;
+      }
+    }
+    // Локации обязаны стоять на суше — раньше метки оказывались посреди океана.
+    skyPlaceLocations();
+    // Глаза открываются над самыми сильными очагами скверны.
+    sky.eyes = skyPickEyes(3);
+  }
+  // Ищет для каждой локации ближайшую к её «желаемой» точке клетку суши.
+  function skyPlaceLocations(){
+    const wd = sky.world, W = wd.w, H = wd.h;
+    LOCATIONS.forEach((loc) => {
+      let best = null, bestD = 1e9;
+      for (let v = 4; v < H - 4; v++){
+        const lat = 90 - (v + 0.5) * 180 / H;
+        if (Math.abs(lat) > 66) continue;              // не селим во льдах
+        for (let u = 0; u < W; u++){
+          const i = v * W + u;
+          if (!wd.land[i] || wd.curse[i] > 40) continue;
+          const lon = (u + 0.5) * 360 / W - 180;
+          const dLon = ((lon - loc.lon + 540) % 360) - 180;
+          const d = dLon * dLon + (lat - loc.lat) * (lat - loc.lat) * 2.2;
+          if (d < bestD){ bestD = d; best = { lat, lon }; }
+        }
+      }
+      if (best){ loc.lat = best.lat; loc.lon = best.lon; }
+    });
+  }
+  function skyPickEyes(n){
+    const wd = sky.world, W = wd.w, H = wd.h, out = [];
+    const cand = [];
+    for (let v = 10; v < H - 10; v += 2){
+      for (let u = 0; u < W; u += 2){
+        const i = v * W + u;
+        if (wd.curse[i] > 150) cand.push({ lat: 90 - v * 180 / H, lon: u * 360 / W - 180, s: wd.curse[i] });
+      }
+    }
+    cand.sort((a, b) => b.s - a.s);
+    cand.forEach((c) => {
+      if (out.length >= n) return;
+      // Не лепим глаза друг на друга.
+      if (out.some((o) => Math.abs(o.lat - c.lat) < 28 && Math.abs(((o.lon - c.lon + 540) % 360) - 180) < 40)) return;
+      out.push({ lat: c.lat, lon: c.lon, phase: Math.random() * Math.PI * 2, open: 0 });
+    });
+    return out;
   }
 
   // lat/lon на единичной сфере с наклоном оси. z > 0 — точка на видимой стороне.
@@ -1534,7 +1678,10 @@
   }
 
   function skyCam(){
-    const wide = sky.w > 760;
+    // Считаем по ЭКРАНУ, а не по буферу: буфер вдвое меньше, и десктоп 1280px
+    // проваливался в узкую раскладку, пока CSS-медиазапрос считал его широким —
+    // отсюда и разъехавшаяся композиция.
+    const wide = sky.cssW > 760;
     const S = Math.min(sky.w, sky.h);
     const i = Math.max(0, Math.min(SKY_STAGES.length - 1, Math.floor(sky.z)));
     const j = Math.min(SKY_STAGES.length - 1, i + 1);
@@ -1603,6 +1750,11 @@
   }
 
   function skyDrawSun(ctx, x, y, r, fade){
+    if (fade <= 0.01) return;
+    // Дыхание короны + лёгкая пульсация самого диска: звёзды мерцают, а солнце
+    // стояло мёртвым пятном — на это была прямая жалоба.
+    const puls = SKY_REDUCED ? 1 : 1 + Math.sin(sky.t * 1.7) * 0.10 + Math.sin(sky.t * 4.3) * 0.04;
+    r *= puls;
     const g = ctx.createRadialGradient(x, y, 0, x, y, r * 9);
     g.addColorStop(0, 'rgba(255,246,220,' + (0.95 * fade) + ')');
     g.addColorStop(0.07, 'rgba(255,214,140,' + (0.5 * fade) + ')');
@@ -1628,87 +1780,207 @@
     ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
   }
 
+  // Планета натягивается на диск ПОПИКСЕЛЬНО: для каждого пикселя восстанавливаем
+  // точку на сфере, снимаем наклон оси и вращение, берём цвет из карты мира. Так
+  // получаются настоящие материки с береговой линией, а не пятна, и вращение
+  // выглядит как вращение шара, а не как ползающие кляксы.
   function skyDrawPlanet(ctx, cx, cy, R, lit, cam){
-    // Атмосферный ореол снаружи диска — цветом Проклятия, не «земной» синевой.
-    // Толщина зажата в ЭКРАННЫХ пикселях: у поверхности радиус огромный, и доля
-    // от него превращала ореол в толстую мятную полосу вдоль горизонта.
     const atmT = Math.min(R * 0.32, Math.min(sky.w, sky.h) * 0.16);
     const atmA = 1 - cam.surf * 0.75;
     const atm = ctx.createRadialGradient(cx, cy, Math.max(0, R - atmT * 0.2), cx, cy, R + atmT);
-    atm.addColorStop(0, 'rgba(85,214,194,0)');
-    atm.addColorStop(0.22, 'rgba(85,214,194,' + (0.30 * atmA) + ')');
-    atm.addColorStop(1, 'rgba(60,130,190,0)');
+    atm.addColorStop(0, 'rgba(90,150,190,0)');
+    atm.addColorStop(0.22, 'rgba(90,160,200,' + (0.26 * atmA) + ')');
+    atm.addColorStop(1, 'rgba(60,110,170,0)');
     ctx.fillStyle = atm;
     ctx.beginPath(); ctx.arc(cx, cy, R + atmT, 0, Math.PI * 2); ctx.fill();
 
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
-
-    const oc = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-    oc.addColorStop(0, '#16405c');
-    oc.addColorStop(1, '#0a2036');
-    ctx.fillStyle = oc;
-    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-
-    // Пятно сплющивается вдоль РАДИУСА диска — так ракурс на сфере читается верно.
-    const blob = (p, rad, fill) => {
-      const sx = cx + p.x * R, sy = cy - p.y * R;
-      const squash = Math.max(0.12, p.z);
-      ctx.save();
-      ctx.translate(sx, sy);
-      ctx.rotate(Math.atan2(sy - cy, sx - cx));
-      ctx.scale(squash, 1);
-      ctx.fillStyle = fill;
-      ctx.beginPath(); ctx.arc(0, 0, rad * R, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    };
-    sky.land.forEach((b) => {
-      const p = skyProject(b.lat, b.lon);
-      if (p.z > 0) blob(p, b.rad, '#2f5138');
-    });
-    // Облака крутятся чуть быстрее суши — параллакс двух слоёв и делает шар живым.
-    const drift = SKY_REDUCED ? 0 : sky.t * 1.6;
-    if (cam.surf < 0.6){
-      sky.clouds.forEach((c) => {
-        const p = skyProject(c.lat, c.lon + drift);
-        if (p.z > 0){
-          ctx.globalAlpha = c.a * Math.min(1, p.z * 1.6) * (1 - cam.surf / 0.6);
-          blob(p, c.rad, '#dff2ff');
-          ctx.globalAlpha = 1;
+    const wd = sky.world;
+    // У самой поверхности карта растянулась бы на несколько текселей во весь экран —
+    // там рисуем землю, а не глобус (см. skyDrawGround).
+    const mapAlpha = 1 - Math.min(1, Math.max(0, (cam.surf - 0.35) / 0.45));
+    if (wd && mapAlpha > 0.01){
+      const x0 = Math.max(0, Math.floor(cx - R)), x1 = Math.min(sky.w, Math.ceil(cx + R));
+      const y0 = Math.max(0, Math.floor(cy - R)), y1 = Math.min(sky.h, Math.ceil(cy + R));
+      if (x1 > x0 && y1 > y0){
+        const img = ctx.getImageData(x0, y0, x1 - x0, y1 - y0);
+        const px = img.data;
+        const W = wd.w, H = wd.h;
+        const ct = Math.cos(SKY_TILT), st = Math.sin(SKY_TILT);
+        const spinU = ((-sky.spin / 360) % 1 + 1) % 1;
+        const cloudU = ((-(sky.spin * 1.35 + sky.t * 4) / 360) % 1 + 1) % 1;
+        // Свет в экранных координатах: z>0 — на зрителя.
+        const lz = 0.42;
+        const ll = Math.hypot(lit.x, lit.y, lz);
+        const lx = lit.x / ll, ly = lit.y / ll, lzz = lz / ll;
+        const flick = 0.72 + 0.28 * Math.sin(sky.t * 6.1);
+        const invR = 1 / R;
+        // Вблизи диск занимает весь буфер, и честный проход по каждому пикселю
+        // стоил бы десятки миллисекунд на телефоне. Там карта и так растянута,
+        // поэтому считаем через пиксель и заливаем блоками — на глаз не отличить.
+        const step = R > Math.min(sky.w, sky.h) * 0.9 ? 2 : 1;
+        const rowW = x1 - x0;
+        for (let y = y0; y < y1; y += step){
+          const ny = (y - cy) * invR;
+          const rowBase = (y - y0) * rowW * 4;
+          for (let x = x0; x < x1; x += step){
+            const nx = (x - cx) * invR;
+            const r2 = nx * nx + ny * ny;
+            if (r2 > 1) continue;
+            const nz = Math.sqrt(1 - r2);
+            // Снимаем наклон оси: обратный поворот вокруг X.
+            const wy0 = -ny, wz0 = nz;
+            const wy = wy0 * ct + wz0 * st;
+            const wz = -wy0 * st + wz0 * ct;
+            const lat = Math.asin(Math.max(-1, Math.min(1, wy)));
+            const lon = Math.atan2(nx, wz);
+            let u = lon * 0.15915494 + 0.5 + spinU;      // 1/(2pi)
+            u -= Math.floor(u);
+            const v = 0.5 - lat * 0.31830989;            // 1/pi
+            const mu = (u * W) | 0;
+            const mv = Math.min(H - 1, Math.max(0, (v * H) | 0));
+            const mi = mv * W + mu;
+            const mo = mi * 3;
+            let cr = wd.rgb[mo], cg = wd.rgb[mo + 1], cb = wd.rgb[mo + 2];
+            // Облака — своя развёртка, поэтому ползут относительно суши.
+            let cu = u + cloudU; cu -= Math.floor(cu);
+            const ci = mv * W + ((cu * W) | 0);
+            const cl = wd.cloud[ci] / 255;
+            if (cl > 0){
+              const k = cl * 0.85;
+              cr += (205 - cr) * k; cg += (216 - cg) * k; cb += (228 - cb) * k;
+            }
+            // Освещение: одна честная диффузная составляющая + мягкий терминатор.
+            let d = nx * lx + ny * ly + nz * lzz;
+            d = d < 0 ? 0 : d;
+            const shade = 0.10 + 0.95 * Math.pow(d, 0.85);
+            cr *= shade; cg *= shade; cb *= shade;
+            // Скверна горит и на ночной стороне — очаги видно даже в тени.
+            const cv = wd.curse[mi];
+            if (cv > 0){
+              const k = (cv / 255) * flick;
+              cr += (255 - cr) * k * 0.85;
+              cg += (110 - cg) * k * 0.75;
+              cb += (40 - cb) * k * 0.7;
+            }
+            for (let sy = 0; sy < step; sy++){
+              if (y + sy >= y1) break;
+              for (let sx = 0; sx < step; sx++){
+                if (x + sx >= x1) break;
+                const o = rowBase + sy * rowW * 4 + (x - x0 + sx) * 4;
+                if (mapAlpha >= 0.999){
+                  px[o] = cr; px[o+1] = cg; px[o+2] = cb; px[o+3] = 255;
+                } else {
+                  px[o]   += (cr - px[o]) * mapAlpha;
+                  px[o+1] += (cg - px[o+1]) * mapAlpha;
+                  px[o+2] += (cb - px[o+2]) * mapAlpha;
+                  px[o+3] = 255;
+                }
+              }
+            }
+          }
         }
-      });
+        ctx.putImageData(img, x0, y0);
+      }
     }
-    // Вблизи материки превращаются в огромные пятна — гасим их землёй в цвете
-    // локации, дальше поверхность дорисовывает дымка и силуэт руин (skyDrawSurface).
-    if (cam.surf > 0.01){
-      const loc = LOCATIONS[curLocation] || LOCATIONS[0];
-      ctx.globalAlpha = cam.surf;
-      ctx.fillStyle = '#0b0d14';                            // плотная база, иначе
-      ctx.fillRect(cx - R, cy - R, R * 2, R * 2);           // сквозь землю видно материк
-      const gnd = ctx.createLinearGradient(0, cy - R, 0, cy - R + sky.h * 0.75);
-      gnd.addColorStop(0, hexToRgba(loc.tint, 0.32));       // подсветка у самого горизонта
-      gnd.addColorStop(1, 'rgba(8,10,17,0)');
-      ctx.fillStyle = gnd;
-      ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-      ctx.globalAlpha = 1;
-    }
-    skyShade(ctx, cx, cy, R, lit, 1 - cam.surf * 0.55);
-    ctx.restore();
+
+    // Земля вблизи + свечение горизонта в цвете локации.
+    if (cam.surf > 0.01) skyDrawGround(ctx, cx, cy, R, cam.surf);
 
     // Световая кромка на освещённой стороне — последний штрих объёма.
     const la = Math.atan2(lit.y, lit.x);
     const rim = ctx.createLinearGradient(cx + Math.cos(la) * R, cy + Math.sin(la) * R,
                                          cx - Math.cos(la) * R, cy - Math.sin(la) * R);
-    rim.addColorStop(0, 'rgba(190,255,245,0.85)');
-    rim.addColorStop(0.5, 'rgba(120,200,220,0.12)');
-    rim.addColorStop(1, 'rgba(120,200,220,0)');
+    rim.addColorStop(0, 'rgba(200,235,255,0.8)');
+    rim.addColorStop(0.5, 'rgba(120,180,220,0.10)');
+    rim.addColorStop(1, 'rgba(120,180,220,0)');
     ctx.strokeStyle = rim;
-    // Толщина кромки тоже зажата в экранных пикселях и гаснет у поверхности: доля
-    // от радиуса давала у земли мятную полосу в 40px поперёк всего горизонта.
     ctx.lineWidth = Math.max(1, Math.min(R * 0.012, Math.min(sky.w, sky.h) * 0.010));
     ctx.globalAlpha = Math.max(0, 1 - cam.surf * 0.8);
     ctx.beginPath(); ctx.arc(cx, cy, R * 0.995, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = 1;
+  }
+
+  // Земля на последней ступени: блочная текстура в цвете локации вместо пустой
+  // заливки — раньше на этом месте был ровный серый экран.
+  function skyDrawGround(ctx, cx, cy, R, k){
+    const loc = LOCATIONS[curLocation] || LOCATIONS[0];
+    const hy = cy - R;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, k);
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = '#0c0f12';
+    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    const gnd = ctx.createLinearGradient(0, hy, 0, hy + sky.h);
+    gnd.addColorStop(0, hexToRgba(loc.tint, 0.40));
+    gnd.addColorStop(0.45, hexToRgba(loc.tint, 0.10));
+    gnd.addColorStop(1, 'rgba(8,10,12,0)');
+    ctx.fillStyle = gnd;
+    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    // Блочные пятна: даже слабая текстура снимает ощущение «пустой заливки».
+    const blk = Math.max(2, Math.round(Math.min(sky.w, sky.h) / 90));
+    const cols = Math.ceil(sky.w / blk), rows = Math.ceil((sky.h - hy) / blk);
+    for (let i = 0; i < cols * rows * 0.22; i++){
+      const bx = Math.floor(Math.random() * cols) * blk;
+      const by = hy + Math.floor(Math.random() * rows) * blk;
+      if (by < hy) continue;
+      const depth = Math.min(1, Math.max(0, (by - hy) / Math.max(1, sky.h - hy)));
+      ctx.fillStyle = Math.random() < 0.5
+        ? 'rgba(0,0,0,' + (0.10 + depth * 0.18) + ')'
+        : hexToRgba(loc.tint, 0.05 + (1 - depth) * 0.06);
+      ctx.fillRect(bx, by, blk, blk);
+    }
+    ctx.restore();
+  }
+
+  // Проклятый глаз над очагом скверны: открывается, смотрит и закрывается.
+  // Рисуется поверх диска, а не в попиксельном проходе — так им можно управлять
+  // как отдельным существом, а не как текстурой.
+  function skyDrawEyes(ctx, cx, cy, R, fade){
+    if (!sky.eyes || fade <= 0.01) return;
+    sky.eyes.forEach((e) => {
+      const p = skyProject(e.lat, e.lon);
+      if (p.z <= 0.12) return;
+      // Цикл: долго закрыт, недолго открыт.
+      const cyc = (Math.sin(sky.t * 0.42 + e.phase) + 1) / 2;
+      const open = Math.max(0, (cyc - 0.55) / 0.45);
+      if (open <= 0.02) return;
+      const sx = cx + p.x * R, sy = cy - p.y * R;
+      const s = R * 0.17 * (0.45 + p.z * 0.55);
+      const a = fade * open * Math.min(1, p.z * 1.6);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.atan2(sy - cy, sx - cx));
+      ctx.scale(Math.max(0.18, p.z), 1);                 // ракурс на сфере
+      const gl = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 2.6);
+      gl.addColorStop(0, 'rgba(255,140,60,0.55)');
+      gl.addColorStop(1, 'rgba(255,80,20,0)');
+      ctx.fillStyle = gl;
+      ctx.fillRect(-s * 2.6, -s * 2.6, s * 5.2, s * 5.2);
+      // Веко-миндалина: два дуговых сегмента, высота зависит от открытия.
+      const hgt = s * 0.62 * open;
+      ctx.beginPath();
+      ctx.moveTo(-s, 0);
+      ctx.quadraticCurveTo(0, -hgt * 2, s, 0);
+      ctx.quadraticCurveTo(0, hgt * 2, -s, 0);
+      ctx.closePath();
+      ctx.fillStyle = '#120704';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,150,70,0.8)';
+      ctx.lineWidth = Math.max(1, s * 0.09);
+      ctx.stroke();
+      // Зрачок смотрит чуть в сторону — глаз «живой».
+      const look = Math.sin(sky.t * 0.7 + e.phase) * s * 0.22;
+      ctx.beginPath();
+      ctx.ellipse(look, 0, s * 0.20, hgt * 0.85, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffb23c';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(look, 0, s * 0.08, hgt * 0.7, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a0602';
+      ctx.fill();
+      ctx.restore();
+    });
   }
 
   function skyDrawMoon(ctx, cx, cy, R, lit, fade){
@@ -1823,9 +2095,18 @@
 
     skyDrawStars(ctx, cam);
 
-    const sunX = w * 0.14, sunY = h * 0.16;
-    skyDrawBlackHole(ctx, w * 0.87, h * 0.17, Math.max(6, Math.min(w, h) * 0.019), Math.max(0, 1 - cam.surf * 1.2));
-    skyDrawSun(ctx, sunX, sunY, Math.max(4, Math.min(w, h) * 0.012), Math.max(0, 1 - cam.surf));
+    // Солнце и дыра ЖИВУТ В СЦЕНЕ, а не приклеены к экрану: при наезде мы пролетаем
+    // мимо них, поэтому они разъезжаются от центра и гаснут. Раньше они стояли на
+    // фиксированных долях экрана и при зуме оставались на месте — это и выглядело
+    // сломанным. push растёт со ступенью наезда.
+    const push = 1 + sky.z * 1.9;
+    const away = (fx, fy) => ({ x: w * 0.5 + (fx - 0.5) * w * push, y: h * 0.5 + (fy - 0.5) * h * push });
+    const farFade = Math.max(0, 1 - sky.z * 0.55) * Math.max(0, 1 - cam.surf);
+    const sunP = away(0.14, 0.16);
+    const holeP = away(0.87, 0.17);
+    const sunX = sunP.x, sunY = sunP.y;
+    skyDrawBlackHole(ctx, holeP.x, holeP.y, Math.max(6, Math.min(w, h) * 0.019 * (1 + sky.z * 0.35)), farFade);
+    skyDrawSun(ctx, sunX, sunY, Math.max(4, Math.min(w, h) * 0.012 * (1 + sky.z * 0.3)), farFade);
 
     // Свет для всех шаров — из реального положения солнца на экране.
     const ldx = sunX - cam.cx, ldy = sunY - cam.cy;
@@ -1844,6 +2125,7 @@
     skyDrawPlanet(ctx, cam.cx, cam.cy, cam.R, lit, cam);
     if (!moonBehind) skyDrawMoon(ctx, mx, my, mR, lit, moonFade);
 
+    skyDrawEyes(ctx, cam.cx, cam.cy, cam.R, Math.max(0, 1 - cam.surf * 1.6));
     skyDrawPins(ctx, cam.cx, cam.cy, cam.R, cam.pin);
     skyDrawSurface(ctx, cam.surf, cam.cy - cam.R);          // горизонт = верх сферы
 
