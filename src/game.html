@@ -585,6 +585,117 @@
     line-height: 1;
     letter-spacing: 2px;
   }
+
+  /* ===================================================================== *
+   * Оформление «тёмное фэнтези» по референсу HUD-кита (refs/ref_hud.jpg): *
+   * угольная плашка, жёсткий тёмный контур, фаска в 1px и золотая нить    *
+   * по краю; заполнение полос — багровое. Блок идёт последним и намеренно *
+   * перекрывает базовые правила: так вся смена шкуры лежит в одном месте, *
+   * а не размазана по тридцати селекторам.                                *
+   * Правила стиля: жёсткие края, радиус не больше 3px, никаких мягких     *
+   * теней и плавных градиентов — иначе теряется пиксельная подача.        *
+   * ===================================================================== */
+  :root{
+    --plate:        #1a191e;
+    --plate-hi:     #33333c;
+    --plate-lo:     #0b0a0e;
+    --brass:        #c9953f;
+    --brass-hi:     #e8c064;
+    --brass-lo:     #7d5f22;
+    --crimson:      #8e2137;
+    --crimson-hi:   #c62e40;
+    --crimson-lo:   #480e26;
+    /* Фаска: светлая грань сверху-слева, тёмная снизу-справа. */
+    --bevel: inset 1px 1px 0 #ffffff14, inset -1px -1px 0 #00000080;
+  }
+
+  /* --- окна: пауза, смерть, выбор способности, артефакт, слияние, меню --- */
+  .card{
+    background: linear-gradient(180deg, #1e1d24, var(--plate));
+    border: 2px solid var(--plate-lo);
+    border-radius: 3px;
+    box-shadow: var(--bevel), 0 0 0 1px var(--brass-lo), 0 18px 46px #000000a6;
+    padding: 22px clamp(18px, 5vw, 34px);
+  }
+  .card h1{ color: var(--brass-hi); }
+  .levelcard h1{ color: var(--brass-hi); }
+  .pausecard h1{ color: var(--crimson-hi); }
+
+  /* --- кнопки --- */
+  .menu-btn, .upgrade-btn, .fusion-yes, .fusion-no, .tbtn, .loc-arrow, .upg-row button{
+    border-radius: 3px;
+    box-shadow: var(--bevel);
+  }
+  .menu-btn{
+    background: linear-gradient(180deg, #d8a94b, var(--brass));
+    border: 2px solid var(--plate-lo);
+    color: #241704;
+    text-shadow: 0 1px 0 #ffffff40;
+  }
+  .menu-btn.ghost, .tbtn, .loc-arrow, .upg-row button{
+    background: linear-gradient(180deg, #26252c, var(--plate));
+    border: 2px solid var(--plate-lo);
+    color: #c9c6bd;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  .menu-btn.ghost:hover, .loc-arrow:hover:enabled, .upg-row button:hover:enabled{ border-color: var(--brass-lo); }
+  .loc-arrow{ border-radius: 3px; }
+  .upgrade-btn{ background: linear-gradient(180deg, #23222a, #17161b); border-color: var(--plate-lo); }
+
+  /* --- карточки выбора (класс, локация) --- */
+  .loc-card{
+    background: linear-gradient(180deg, #191820, #121118);
+    border: 2px solid var(--plate-lo);
+    border-radius: 3px;
+    box-shadow: var(--bevel), 0 0 0 1px #ffffff0d;
+  }
+
+  /* --- полоса опыта: тёмный жёлоб + багровое заполнение с золотой кромкой --- */
+  .xpstrip{
+    height: 12px;
+    background: linear-gradient(180deg, #101016, #07070b);
+    border-bottom: 2px solid var(--plate-lo);
+    box-shadow: var(--bevel);
+  }
+  .xpfill{
+    background: linear-gradient(180deg, var(--crimson-hi) 0 40%, var(--crimson) 40% 100%);
+    border-right: 1px solid var(--brass-hi);
+    box-shadow: inset 0 1px 0 #ffffff35;
+  }
+
+  /* --- верхняя панель: уровень и таймер на общей плашке --- */
+  .topbar{
+    background: none;
+    padding: 8px 14px;
+    margin-top: 6px;
+    border: 2px solid var(--plate-lo);
+    border-radius: 3px;
+    background-image: linear-gradient(180deg, #1e1d24e6, #12111799);
+    box-shadow: var(--bevel), 0 0 0 1px var(--brass-lo), 0 6px 18px #0009;
+  }
+  .levelbadge{
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--crimson), var(--crimson-lo));
+    border: 2px solid var(--plate-lo);
+    color: #ffe3b0;
+    box-shadow: var(--bevel);
+  }
+  .timer{ color: #e6e2d6; text-shadow: 0 2px 0 #000; }
+  .nukechip{
+    border-radius: 3px; background: var(--plate); border: 2px solid var(--plate-lo);
+    color: var(--brass); box-shadow: var(--bevel);
+  }
+  .nukechip.ready{ color: #ffe08a; border-color: var(--brass-lo); }
+
+  /* --- подсказка и чипы баффов --- */
+  .hint, .buff-chip{
+    background: linear-gradient(180deg, #1b1a21e8, #101016e8);
+    border: 2px solid var(--plate-lo);
+    border-radius: 3px;
+    box-shadow: var(--bevel);
+    backdrop-filter: none;
+  }
+  .hint b{ color: var(--brass-hi); }
 </style>
 
 <div id="game"></div>
@@ -738,7 +849,7 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.17';
+  const GAME_VERSION = '1.0.18';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
@@ -789,7 +900,7 @@
   const ARENA_NORMAL_STEP = 10;
   const ARENA_REINFORCE_ARC = Math.PI * 2;   // со всех сторон — числом, а не с одной «безопасной» стороны
 
-  const TILE = 128;
+  const TILE = 256;   // тайл земли; чем крупнее, тем меньше заметен повтор рисунка
 
   /* @include data/weapons.js */
 
@@ -1171,10 +1282,52 @@
     g.destroy();
   }
 
-  function makeGridTexture(key, tile, color){
+  // Земля под ногами — бесшовный пиксельный тайл по референсу карты (refs/ref_map.jpg):
+  // приглушённая тёмная трава, редкие проплешины земли и камня. Рисуется блоками по
+  // PIX px, поэтому читается как пиксель-арт, а не как шум. Намеренно ТЁМНАЯ: по
+  // арт-библии цвет на экране принадлежит магии, а не фону.
+  const GROUND_PIX = 4;
+  const GROUND_BASE = 0x121a15;
+  // Оттенки держим в узком тёмном диапазоне: широкий разброс превращает поле в
+  // рябь, а по арт-библии фон обязан быть тихим — цвет на экране принадлежит магии.
+  const GROUND_SHADES = [0x0f1612, 0x141d17, 0x17211a];
+  const GROUND_SPECKS = [
+    { color: 0x1d2a20, chance: 0.0055, size: 3 },  // кустик травы
+    { color: 0x0c110e, chance: 0.0045, size: 4 },  // тёмная прогалина
+    { color: 0x232620, chance: 0.0018, size: 2 }   // редкий камешек
+  ];
+  function makeGroundTexture(key, tile){
     const g = new Phaser.GameObjects.Graphics(scene);
-    g.lineStyle(1, color, 1);
-    g.strokeRect(0, 0, tile, tile);
+    g.fillStyle(GROUND_BASE, 1);
+    g.fillRect(0, 0, tile, tile);
+    // Пятна травы: кластеры блоков, а не попиксельный шум — иначе на экране каша.
+    const cells = tile / GROUND_PIX;
+    for (let i = 0; i < cells * cells * 0.10; i++){
+      const cx = Math.floor(Math.random() * cells);
+      const cy = Math.floor(Math.random() * cells);
+      const w = 2 + Math.floor(Math.random() * 5);   // пятна крупнее и реже, чем шум
+      const h = 2 + Math.floor(Math.random() * 4);
+      g.fillStyle(GROUND_SHADES[Math.floor(Math.random() * GROUND_SHADES.length)], 1);
+      for (let x = 0; x < w; x++){
+        for (let y = 0; y < h; y++){
+          // Перенос по модулю — тайл обязан стыковаться сам с собой без шва.
+          g.fillRect(((cx + x) % cells) * GROUND_PIX, ((cy + y) % cells) * GROUND_PIX, GROUND_PIX, GROUND_PIX);
+        }
+      }
+    }
+    GROUND_SPECKS.forEach((s) => {
+      g.fillStyle(s.color, 1);
+      for (let i = 0; i < cells * cells * s.chance; i++){
+        const cx = Math.floor(Math.random() * cells);
+        const cy = Math.floor(Math.random() * cells);
+        for (let x = 0; x < s.size; x++){
+          for (let y = 0; y < s.size; y++){
+            if (Math.random() < 0.45) continue;      // рваный край, не ровный квадрат
+            g.fillRect(((cx + x) % cells) * GROUND_PIX, ((cy + y) % cells) * GROUND_PIX, GROUND_PIX, GROUND_PIX);
+          }
+        }
+      }
+    });
     g.generateTexture(key, tile, tile);
     g.destroy();
   }
@@ -1295,7 +1448,9 @@
     { rW: 4.00, rN: 8.60, cxW: 0.40, cxN: 0.50, cyW: 4.30, cyN: 4.30, star: 1.85, pin: 0.00, surf: 1 }
   ];
   const sky = {
-    canvas: null, ctx: null, w: 0, h: 0, dpr: 1, raf: 0, last: 0, t: 0,
+    // w/h — размер буфера (в «крупных пикселях»), cssW/cssH — размер на экране.
+    canvas: null, ctx: null, out: null, buf: null, bctx: null,
+    w: 0, h: 0, cssW: 0, cssH: 0, pix: 3, raf: 0, last: 0, t: 0,
     z: 0, zTarget: 0, spin: 0, spinTarget: null,
     stars: [], land: [], clouds: [], skyline: [], ready: false
   };
@@ -1305,27 +1460,40 @@
     return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
   }
 
+  // Сцена рисуется в МАЛЕНЬКИЙ буфер и растягивается без сглаживания — отсюда
+  // пиксельная подача из референсов (refs/ref_space.jpg, ref_planet.jpg). Вся
+  // отрисовка ниже работает в координатах буфера, поэтому менять её не пришлось:
+  // sky.w/h — это размер буфера, а sky.cssW/cssH — реальный размер на экране.
   function skyResize(){
     if (!sky.canvas) return;
-    sky.dpr = Math.min(2, window.devicePixelRatio || 1);
-    sky.w = sky.canvas.clientWidth || window.innerWidth;
-    sky.h = sky.canvas.clientHeight || window.innerHeight;
-    sky.canvas.width = Math.round(sky.w * sky.dpr);
-    sky.canvas.height = Math.round(sky.h * sky.dpr);
-    sky.ctx.setTransform(sky.dpr, 0, 0, sky.dpr, 0, 0);
+    sky.cssW = sky.canvas.clientWidth || window.innerWidth;
+    sky.cssH = sky.canvas.clientHeight || window.innerHeight;
+    sky.pix = sky.cssW < 620 ? 2 : 3;              // на телефоне блок мельче, иначе каша
+    sky.w = Math.ceil(sky.cssW / sky.pix);
+    sky.h = Math.ceil(sky.cssH / sky.pix);
+    if (!sky.buf){
+      sky.buf = document.createElement('canvas');
+      sky.bctx = sky.buf.getContext('2d');
+    }
+    sky.buf.width = sky.w;
+    sky.buf.height = sky.h;
+    sky.ctx = sky.bctx;                             // весь рисунок идёт в буфер
+    sky.canvas.width = sky.cssW;
+    sky.canvas.height = sky.cssH;
+    sky.out = sky.canvas.getContext('2d');
+    sky.out.imageSmoothingEnabled = false;
   }
 
   function skyInit(){
     const c = document.getElementById('menuSky');
     if (!c) return;
     sky.canvas = c;
-    sky.ctx = c.getContext('2d');
     skyResize();
     const rnd = (a, b) => a + Math.random() * (b - a);
     // Звёзды хранятся в полярных координатах от центра экрана — тогда «разлёт»
     // при наезде это просто домножение радиуса, без пересчёта всего поля.
     sky.stars = [];
-    const starCount = Math.max(90, Math.min(340, Math.round(sky.w * sky.h / 2400)));
+    const starCount = Math.max(90, Math.min(320, Math.round(sky.w * sky.h / 320)));
     for (let i = 0; i < starCount; i++){
       sky.stars.push({
         a: rnd(0, Math.PI * 2), d: Math.pow(Math.random(), 0.62),
@@ -1678,6 +1846,11 @@
 
     skyDrawPins(ctx, cam.cx, cam.cy, cam.R, cam.pin);
     skyDrawSurface(ctx, cam.surf, cam.cy - cam.R);          // горизонт = верх сферы
+
+    // Буфер на экран: растяжение без сглаживания и даёт пиксельную картинку.
+    sky.out.imageSmoothingEnabled = false;
+    sky.out.clearRect(0, 0, sky.cssW, sky.cssH);
+    sky.out.drawImage(sky.buf, 0, 0, sky.cssW, sky.cssH);
   }
 
   function skyFrame(now){
@@ -1687,7 +1860,7 @@
     sky.t += dt;
     // Событие resize приходит не всегда (на телефоне адресная строка меняет высоту
     // без него) — сверяем фактический размер каждый кадр, это дешевле одного бага.
-    if (sky.canvas.clientWidth !== sky.w || sky.canvas.clientHeight !== sky.h) skyResize();
+    if (sky.canvas.clientWidth !== sky.cssW || sky.canvas.clientHeight !== sky.cssH) skyResize();
     sky.z += (sky.zTarget - sky.z) * (SKY_REDUCED ? 1 : 1 - Math.pow(0.04, dt));
     if (!SKY_REDUCED){
       if (sky.spinTarget !== null && sky.z > 0.35){
@@ -1940,7 +2113,7 @@
     this.cameras.main.setBackgroundColor('#0c0e16');
     this.cameras.main.setRoundPixels(true);
 
-    makeGridTexture('tex-grid', TILE, 0x1b2030);
+    makeGroundTexture('tex-grid', TILE);
     gridLayer = this.add.tileSprite(-TILE, -TILE, window.innerWidth + TILE * 2, window.innerHeight + TILE * 2, 'tex-grid');
     gridLayer.setOrigin(0, 0);
     gridLayer.setScrollFactor(0);
