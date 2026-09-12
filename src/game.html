@@ -884,12 +884,12 @@
     ? 'Джойстик — движение, ❙❙ вверху справа — пауза. Собирай кристаллы опыта, чтобы усиливаться.'
     : 'WASD / стрелки — движение, ESC — пауза. Собирай кристаллы опыта, чтобы усиливаться.';
 
-  const GAME_VERSION = '1.0.19';
+  const GAME_VERSION = '1.0.20';
   const SUPA_URL = 'https://ssbdowajxtvllhbryrek.supabase.co';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmRvd2FqeHR2bGxoYnJ5cmVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMDAwMzgsImV4cCI6MjEwNDU3NjAzOH0.V899GrbdB0WcM9Mf-H7F_NwhkYwHy7luG3MWFOaTW7Y';
   const PLAYER_SPEED = 198;
   const BOLT_SPEED = 560;
-  const ENEMY_STOP_DIST = 21;
+  const ENEMY_STOP_DIST = 24;
 
   /* @include data/enemies.js */
 
@@ -1165,6 +1165,12 @@
     if (paused && away > 0){
       Object.keys(lastFiredAt).forEach((id) => { lastFiredAt[id] += away; });
       lastHitAt += away;
+      // Время жизни волн и снарядов и таймер атаки двойников тоже считаются от часов
+      // Phaser, которые в паузе идут. Без сдвига после ЛЮБОГО окна выбора всё летящее
+      // мгновенно «старело» и исчезало — отсюда жалоба «волна пропадает».
+      activeWaves.forEach((w) => { w.spawnedAt += away; });
+      if (bolts) bolts.children.each((b) => { if (b.spawnedAt) b.spawnedAt += away; });
+      activeClones.forEach((c) => { if (c.nextAttackAt) c.nextAttackAt += away; });
     }
     paused = false;
     pauseReason = null;
@@ -2411,12 +2417,12 @@
       setupTexture('tex-player-' + id, ASSET_BASE_SIZE['tex-player'],
         () => makeClassPlayerTexture('tex-player-' + id, 12, CLASSES[id].skin, id));
     });
-    makeCircleTexture('tex-enemy', 13, 0xe2495c, 0xffb9c2);
-    makeCircleTexture('tex-enhanced', 16, 0xd8455f, 0xffb066);
-    makeCircleTexture('tex-elite', 19, 0xe2495c, 0xffd700);
-    makeCircleTexture('tex-miniboss', 25, 0xa63fc8, 0xffd700);
-    makeCircleTexture('tex-boss', 31, 0x8a4fd9, 0xf1e2ff);
-    makeCircleTexture('tex-elder', 43, 0x5a1fb0, 0xffd700);
+    makeCircleTexture('tex-enemy', 16, 0xe2495c, 0xffb9c2);
+    makeCircleTexture('tex-enhanced', 19, 0xd8455f, 0xffb066);
+    makeCircleTexture('tex-elite', 22, 0xe2495c, 0xffd700);
+    makeCircleTexture('tex-miniboss', 28, 0xa63fc8, 0xffd700);
+    makeCircleTexture('tex-boss', 34, 0x8a4fd9, 0xf1e2ff);
+    makeCircleTexture('tex-elder', 46, 0x5a1fb0, 0xffd700);
     makeSparkStarTexture('tex-bolt', 6);
     makeSunTexture('tex-sun', 16);
     makeBulletTexture('tex-bullet', 28, 9);
@@ -2575,17 +2581,23 @@
     return spawnEnemy(tier, p.x, p.y);
   }
 
-  // Переиспользуем только рядовых: усиленные, элита и мини-боссы не должны исчезать
-  // просто потому, что игрок от них отбежал.
+  // Переставляет отставшего врага обратно к игроку — со статами ЕГО категории. Раньше
+  // сюда попадали только рядовые и всем ставились статы рядового; теперь усиленный,
+  // от которого игрок убежал, возвращается усиленным, и сбежать от угрозы нельзя.
   function recycleEnemy(e){
+    const t = ENEMY_TIERS[e.tier] || ENEMY_TIERS.normal;
     const p = ringPos(ENEMY_SPAWN_RADIUS);
     e.body.reset(p.x, p.y);
-    e.hp = Math.round(ENEMY_BASE_HP * ENEMY_TIERS.normal.hp * enemyHpMult());
+    e.hp = Math.round(ENEMY_BASE_HP * t.hp * enemyHpMult());
     e.maxHp = e.hp;
-    e.contactDamage = Math.round(ENEMY_CONTACT_DAMAGE * ENEMY_TIERS.normal.dmg * enemyDmgMult());
+    e.contactDamage = Math.round(ENEMY_CONTACT_DAMAGE * t.dmg * enemyDmgMult());
     e.slowUntil = 0;
     e.slowMult = 1;
     e.charmedUntil = null;
+    // Залипшие флаги событий: с ними враг не давал опыта и навсегда выпадал из поводка.
+    e.inArena = false;
+    e.arenaFoe = false;
+    e.eventFoe = false;
     e.clearTint();
     scene.tweens.killTweensOf(e);
     enemyAppearFx(e);
@@ -2602,12 +2614,22 @@
     return Math.min(4, 1 + Math.floor(missing / (cap * 0.35)));
   }
 
+  // ОДНО правило для поводка (update) и для переработки на капе (spawnOrRecycle).
+  // Раньше обе точки брали только tier === 'normal': отставшие усиленные и элита
+  // копились за спиной игрока навсегда (враги по дизайну медленнее его), забивали кап,
+  // спавн вставал, вокруг пустело — опыт переставал падать, а врагов «становилось мало».
+  // Лечил это только глобальный Термоядерный, выкашивая всех на карте разом.
+  // Тяжёлых и участников арены/разлома не трогаем — они привязаны к событию.
+  function isRecyclable(e){
+    return e.active && !e.heavy && !e.inArena && !e.eventFoe && !e.charmedUntil;
+  }
+
   function spawnOrRecycle(){
     if (bossActive) return;
     if (enemies.countActive(true) >= enemyCap()){
       let farthest = null, maxD = -1;
       enemies.children.each((e) => {
-        if (e.tier !== 'normal' || e.charmedUntil) return;
+        if (!isRecyclable(e)) return;
         const d = Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y);
         if (d > maxD){ maxD = d; farthest = e; }
       });
@@ -4489,6 +4511,8 @@
 
   function finishRiftFight(){
     riftFight = false;
+    // Подчинённые Кровью выходцы из разлома переживали событие с флагом и выпадали из поводка.
+    enemies.children.each((e) => { e.eventFoe = false; });
     document.getElementById('hint').textContent = HINT_DEFAULT;
     showToast('Разлом закрыт');
     openItemChoice();
@@ -4628,6 +4652,9 @@
   function endBossFight(){
     bossActive = false;
     arenaBosses = [];
+    // Выжившие (подчинённые Кровью или пойманные барьером) уносили флаги арены в обычную
+    // игру: такой враг не давал опыта (arenaFoe) и навсегда выпадал из поводка (inArena).
+    enemies.children.each((e) => { e.inArena = false; e.arenaFoe = false; });
     barrierGfx.clear();
     document.getElementById('bossWrap').classList.remove('show');
     document.getElementById('hint').textContent = HINT_DEFAULT;
@@ -4900,7 +4927,7 @@
         e.setVelocity(Math.cos(angle) * spd, Math.sin(angle) * spd);
       }
 
-      if (e.tier === 'normal' && !e.inArena){
+      if (isRecyclable(e)){
         const dd = Phaser.Math.Distance.Between(player.x, player.y, e.x, e.y);
         if (dd > ENEMY_LEASH_RADIUS) recycleEnemy(e);
       }

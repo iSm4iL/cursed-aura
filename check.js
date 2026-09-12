@@ -162,6 +162,36 @@ if (!/playerHp <= 0 && !reviveLastResort\(\)\) doGameOver\(\)/.test(src)) throw 
 const rr = {};
 [...lootBlock.matchAll(/rarity: R\.(\w)/g)].forEach((m) => rr[m[1]] = (rr[m[1]] || 0) + 1);
 
+// ---- 17. Регрессии, найденные по жалобам 1.0.20. Собираем ВСЕ провалы разом, а не
+// падаем на первом: так один запуск показывает, какие именно правила нарушены.
+const regress = [
+  // Часы Phaser (update time) идут и в паузе. Всё, что считает время жизни от них,
+  // обязано сдвигаться при снятии паузы — иначе после любого окна выбора летящие
+  // волны и снаряды мгновенно «стареют» и исчезают («волна пропадает»).
+  [/activeWaves\.forEach\(\(w\) => \{ w\.spawnedAt \+= away; \}\);/.test(src),
+    'resumeGame не сдвигает время рождения летящих волн — они гибнут после окна выбора'],
+  [/b\.spawnedAt \+= away;/.test(src),
+    'resumeGame не сдвигает время рождения снарядов — они гибнут после окна выбора'],
+  // Поводок и переработка раньше касались только tier === 'normal'. Усиленные, элита и
+  // враги с залипшим флагом арены отставали от игрока навсегда и забивали кап: спавн
+  // вставал, вокруг игрока пустело, опыт переставал падать — чинил только глобальный
+  // Термоядерный, выкашивая всех на карте. Одно правило на обе точки — isRecyclable.
+  [!/e\.tier === 'normal' && !e\.inArena/.test(src),
+    'поводок снова ограничен рядовыми: отставшие усиленные забьют кап и опыт перестанет падать'],
+  [/function isRecyclable\(e\)/.test(src),
+    'нет общего правила isRecyclable для поводка и переработки'],
+  [/function recycleEnemy\(e\)\{[\s\S]{0,260}const t = ENEMY_TIERS\[e\.tier\]/.test(src),
+    'recycleEnemy снова ставит всем статы рядового вместо своей категории'],
+  // Флаги арены/разлома переживали событие: такой враг не давал опыта (arenaFoe) и
+  // навсегда выпадал из поводка (inArena).
+  [/function endBossFight\(\)\{[\s\S]{0,700}e\.arenaFoe = false/.test(src),
+    'endBossFight не снимает флаги арены с выживших'],
+  [/function finishRiftFight\(\)\{[\s\S]{0,300}e\.eventFoe = false/.test(src),
+    'finishRiftFight не снимает флаг разлома с выживших'],
+];
+const regressFail = regress.filter((r) => !r[0]).map((r) => r[1]);
+if (regressFail.length) throw new Error('регрессии (' + regressFail.length + '):\n  - ' + regressFail.join('\n  - '));
+
 console.log('check ok:',
   'категории', Object.keys(tiers).join('/'),
   '| стоп-дистанция', stop, '<', playerR + tiers.normal.radius,
